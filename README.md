@@ -1,7 +1,5 @@
-# Tauri + Dioxus
+# Miorin
 
-This template should help get you started developing with Tauri and Dioxus.
+A cross-platform desktop app that continuously collects raw material from the user's clipboard and watched folders, and lets them drag, edit, and compose that material into structured notes and daily diaries, with optional LLM assistance for summarization and prioritization.
 
-## Recommended IDE Setup
-
-[VS Code](https://code.visualstudio.com/) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer) + [Dioxus](https://marketplace.visualstudio.com/items?itemName=DioxusLabs.dioxus).
+We believe that everyone has a story to tell, and Miorin is here to help you collect and reflect. All data is stored locally on your machine, and you are in full control of your data. The project is open source and free to use.
