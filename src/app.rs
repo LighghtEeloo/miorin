@@ -1,3 +1,5 @@
+use crate::panel;
+use crate::card;
 use crate::tauri_api;
 use leptos::prelude::*;
 use leptos_icons::Icon;
@@ -5,133 +7,6 @@ use icondata::LuSettings;
 use miorin_core::prelude::*;
 use styled::style;
 use wasm_bindgen_futures::spawn_local;
-
-// Common panel styles - helper functions that return the style! macro result
-fn panel_wrapper_styles() -> Result<styled::Style, stylist::Error> {
-    style! {
-        .panel-wrapper {
-            height: 100%;
-            max-height: 100%;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-        }
-    }
-}
-
-fn panel_styles() -> Result<styled::Style, stylist::Error> {
-    style! {
-        .panel {
-            display: flex;
-            flex-direction: column;
-            height: 100%;
-            max-height: 100%;
-            min-height: 0;
-            border-right: 1px solid var(--color-border);
-            background-color: var(--color-panel-bg);
-            overflow: hidden;
-        }
-        .panel:last-child {
-            border-right: none;
-        }
-    }
-}
-
-fn panel_header_styles() -> Result<styled::Style, stylist::Error> {
-    style! {
-        .panel-header {
-            flex-shrink: 0;
-            padding: 1rem;
-            border-bottom: 1px solid var(--color-border);
-            background-color: var(--color-panel-header-bg);
-        }
-        .panel-header h2 {
-            margin: 0;
-            font-size: 1rem;
-            font-weight: 600;
-            color: var(--color-text);
-        }
-    }
-}
-
-fn panel_header_with_actions_styles() -> Result<styled::Style, stylist::Error> {
-    style! {
-        .panel-header {
-            flex-shrink: 0;
-            padding: 1rem;
-            border-bottom: 1px solid var(--color-border);
-            background-color: var(--color-panel-header-bg);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .panel-header h2 {
-            margin: 0;
-            font-size: 1rem;
-            font-weight: 600;
-            color: var(--color-text);
-        }
-        .settings-button {
-            padding: 6px;
-            background: var(--color-secondary, #6c757d);
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 28px;
-            height: 28px;
-            min-width: 28px;
-            transition: background-color 0.2s;
-        }
-        .settings-button:hover {
-            background-color: var(--color-secondary-hover, #5a6268);
-        }
-    }
-}
-
-fn panel_content_styles() -> Result<styled::Style, stylist::Error> {
-    style! {
-        .panel-content {
-            flex: 1 1 0;
-            min-height: 0;
-            overflow-y: auto;
-            overflow-x: hidden;
-            padding: 0.5rem;
-            scrollbar-width: auto;
-            scrollbar-color: #888 #f0f0f0;
-            box-sizing: border-box;
-        }
-        .panel-content::-webkit-scrollbar {
-            width: 12px;
-            display: block;
-        }
-        .panel-content::-webkit-scrollbar-track {
-            background: #f0f0f0;
-            border-radius: 6px;
-        }
-        .panel-content::-webkit-scrollbar-thumb {
-            background: #888;
-            border-radius: 6px;
-            border: 2px solid #f0f0f0;
-        }
-        .panel-content::-webkit-scrollbar-thumb:hover {
-            background: #666;
-        }
-    }
-}
-
-fn entries_list_styles() -> Result<styled::Style, stylist::Error> {
-    style! {
-        .entries-list {
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-        }
-    }
-}
 
 #[component]
 fn MainView(
@@ -213,8 +88,8 @@ pub fn App() -> impl IntoView {
         {move || {
             if show_settings.get() {
                 view! {
-                    <crate::settings::Settings 
-                        close_settings=close_settings.clone() 
+                    <crate::settings::Settings
+                        close_settings=close_settings.clone()
                         raw_entries_signal=raw_entries.clone()
                     />
                 }.into_any()
@@ -229,55 +104,39 @@ pub fn App() -> impl IntoView {
 
 #[component]
 fn GlacierPanel(cubes: RwSignal<Vec<Cube>>) -> impl IntoView {
-    styled::view! { panel_styles(),
-        <div class="panel">
-            {styled::view! { panel_header_styles(),
-                <div class="panel-header">
-                    <h2>"Glacier"</h2>
-                </div>
-            }}
-            {styled::view! { panel_content_styles(),
-                <div class="panel-content">
-                    {styled::view! { entries_list_styles(),
-                        <div class="entries-list">
-                            {move || {
-                                let cubes_data = cubes.get();
-                                cubes_data.into_iter()
-                                    .filter(|cube| cube.pin)
-                                    .map(|cube| view! { <CubeEntry cube=cube /> })
-                                    .collect::<Vec<_>>()
-                            }}
-                        </div>
-                    }}
-                </div>
-            }}
-        </div>
+    view! {
+        <panel::Panel title="Glacier">
+            <card::CardList items=move || {
+                let cubes_data = cubes.get();
+                cubes_data.into_iter()
+                    .filter(|cube| cube.pin)
+                    .map(|cube| view! { <CubeEntry cube=cube /> }.into_any())
+                    .collect::<Vec<_>>()
+            } />
+        </panel::Panel>
     }
 }
 
 #[component]
 fn Workspace() -> impl IntoView {
-    let workspace_panel_combined = style! {
-        .panel {
+    let workspace_styles = style! {
+        .workspace {
             display: flex;
             flex-direction: column;
             height: 100%;
             border-right: 1px solid var(--color-border);
-            background-color: var(--color-panel-bg);
-            overflow: hidden;
-        }
-        .workspace-panel {
             background-color: var(--color-workspace-bg);
+            overflow: hidden;
         }
     };
 
-    let panel_header_styles = style! {
-        .panel-header {
+    let workspace_header_styles = style! {
+        .workspace-header {
             padding: 1rem;
             border-bottom: 1px solid var(--color-border);
             background-color: var(--color-panel-header-bg);
         }
-        .panel-header h2 {
+        .workspace-header h2 {
             margin: 0;
             font-size: 1rem;
             font-weight: 600;
@@ -285,8 +144,8 @@ fn Workspace() -> impl IntoView {
         }
     };
 
-    let panel_content_styles = style! {
-        .panel-content {
+    let workspace_content_styles = style! {
+        .workspace-content {
             flex: 1;
             overflow-y: auto;
             padding: 0.5rem;
@@ -309,15 +168,15 @@ fn Workspace() -> impl IntoView {
         }
     };
 
-    styled::view! { workspace_panel_combined,
-        <div class="panel workspace-panel">
-            {styled::view! { panel_header_styles,
-                <div class="panel-header">
+    styled::view! { workspace_styles,
+        <div class="workspace">
+            {styled::view! { workspace_header_styles,
+                <div class="workspace-header">
                     <h2>"Workspace"</h2>
                 </div>
             }}
-            {styled::view! { panel_content_styles,
-                <div class="panel-content">
+            {styled::view! { workspace_content_styles,
+                <div class="workspace-content">
                     {styled::view! { workspace_editor_styles,
                         <div class="workspace-editor">
                             {styled::view! { placeholder_text_styles,
@@ -333,38 +192,25 @@ fn Workspace() -> impl IntoView {
 
 #[component]
 fn StreamPanel(
-    raw_entries: RwSignal<Vec<Raw>>,
-    open_settings: impl Fn(web_sys::MouseEvent) + 'static,
+    raw_entries: RwSignal<Vec<Raw>>, open_settings: impl Fn(web_sys::MouseEvent) + 'static,
 ) -> impl IntoView {
-    styled::view! { panel_wrapper_styles(),
-        <div class="panel-wrapper">
-            {styled::view! { panel_styles(),
-                <div class="panel">
-                    {styled::view! { panel_header_with_actions_styles(),
-                        <div class="panel-header">
-                            <h2>"Stream"</h2>
-                            <button class="settings-button" on:click=open_settings>
-                                <Icon icon=LuSettings width="16" height="16" />
-                            </button>
-                        </div>
-                    }}
-                    {styled::view! { panel_content_styles(),
-                        <div class="panel-content">
-                            {styled::view! { entries_list_styles(),
-                                <div class="entries-list">
-                                    {move || {
-                                        let entries = raw_entries.get();
-                                        entries.into_iter()
-                                            .map(|raw| view! { <RawEntry raw=raw /> })
-                                            .collect::<Vec<_>>()
-                                    }}
-                                </div>
-                            }}
-                        </div>
-                    }}
-                </div>
-            }}
-        </div>
+    view! {
+        <panel::Panel
+            title="Stream"
+            wrapper=true
+            header_actions=view! {
+                <button class="settings-button" on:click=open_settings>
+                    <Icon icon=LuSettings width="16" height="16" />
+                </button>
+            }.into_any()
+        >
+            <card::CardList items=move || {
+                let entries = raw_entries.get();
+                entries.into_iter()
+                    .map(|raw| view! { <RawEntry raw=raw /> }.into_any())
+                    .collect::<Vec<_>>()
+            } />
+        </panel::Panel>
     }
 }
 
@@ -573,4 +419,3 @@ fn format_raw_source(source: &RawSource) -> String {
         | RawSource::ManualImport => "Manual Import".to_string(),
     }
 }
-

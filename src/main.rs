@@ -1,6 +1,8 @@
 mod app;
 mod tauri_api;
 mod settings;
+mod panel;
+mod card;
 
 use app::*;
 use leptos::prelude::*;
