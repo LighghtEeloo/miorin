@@ -10,36 +10,31 @@ use tracing;
 async fn get_db_pool(app: &AppHandle) -> Result<SqlitePool, String> {
     use tauri::Manager;
     tracing::debug!("Getting app data directory");
-    let app_dir = app
-        .path()
-        .app_data_dir()
-        .map_err(|e| {
-            tracing::error!("Failed to get app data dir: {}", e);
-            format!("Failed to get app data dir: {}", e)
-        })?;
-    
+    let app_dir = app.path().app_data_dir().map_err(|e| {
+        tracing::error!("Failed to get app data dir: {}", e);
+        format!("Failed to get app data dir: {}", e)
+    })?;
+
     tracing::debug!(app_data_dir = ?app_dir, "App data directory");
-    
+
     tracing::debug!("Creating directory if it doesn't exist");
-    std::fs::create_dir_all(&app_dir)
-        .map_err(|e| {
-            tracing::error!("Failed to create app data dir: {}", e);
-            format!("Failed to create app data dir: {}", e)
-        })?;
-    
+    std::fs::create_dir_all(&app_dir).map_err(|e| {
+        tracing::error!("Failed to create app data dir: {}", e);
+        format!("Failed to create app data dir: {}", e)
+    })?;
+
     let db_path = app_dir.join("miorin.db");
     tracing::debug!(db_path = ?db_path, "Database path");
-    
+
     // Verify the directory exists and is writable
     if let Some(parent) = db_path.parent() {
         tracing::debug!(parent_dir = ?parent, "Verifying parent directory exists");
         if !parent.exists() {
             tracing::info!("Parent directory doesn't exist, creating");
-            std::fs::create_dir_all(parent)
-                .map_err(|e| {
-                    tracing::error!("Failed to create parent directory: {}", e);
-                    format!("Failed to create parent directory: {}", e)
-                })?;
+            std::fs::create_dir_all(parent).map_err(|e| {
+                tracing::error!("Failed to create parent directory: {}", e);
+                format!("Failed to create parent directory: {}", e)
+            })?;
         }
         // Check if we can write to the directory
         let test_file = parent.join(".test_write");
@@ -49,26 +44,22 @@ async fn get_db_pool(app: &AppHandle) -> Result<SqlitePool, String> {
         }
         let _ = std::fs::remove_file(&test_file);
     }
-    
+
     // Use SqliteConnectOptions which handles file paths better than connection strings
     // This avoids issues with spaces and special characters in paths
     let db_exists = db_path.exists();
     tracing::debug!(db_exists, "Database file exists");
     tracing::debug!("Using SqliteConnectOptions for better path handling");
-    
-    let options = SqliteConnectOptions::new()
-        .filename(&db_path)
-        .create_if_missing(true);
-    
+
+    let options = SqliteConnectOptions::new().filename(&db_path).create_if_missing(true);
+
     tracing::debug!("Connecting to database");
-    let pool = SqlitePool::connect_with(options)
-        .await
-        .map_err(|e| {
-            tracing::error!("Connection error: {}", e);
-            format!("Failed to connect to database: {}", e)
-        })?;
+    let pool = SqlitePool::connect_with(options).await.map_err(|e| {
+        tracing::error!("Connection error: {}", e);
+        format!("Failed to connect to database: {}", e)
+    })?;
     tracing::info!("Successfully connected to database");
-    
+
     // Run migrations if database is new or migrations haven't been applied
     if !db_exists {
         tracing::info!("Database is new, running migrations");
@@ -81,48 +72,42 @@ async fn get_db_pool(app: &AppHandle) -> Result<SqlitePool, String> {
             run_migrations(&pool).await?;
         }
     }
-    
+
     Ok(pool)
 }
 
 /// Check if migrations need to be run
 async fn needs_migration(pool: &SqlitePool) -> Result<bool, String> {
     // Check if the migrations table exists
-    let result = sqlx::query(
-        "SELECT name FROM sqlite_master WHERE type='table' AND name='raw_entries'"
-    )
-    .fetch_optional(pool)
-    .await
-    .map_err(|e| format!("Failed to check migrations: {}", e))?;
-    
+    let result =
+        sqlx::query("SELECT name FROM sqlite_master WHERE type='table' AND name='raw_entries'")
+            .fetch_optional(pool)
+            .await
+            .map_err(|e| format!("Failed to check migrations: {}", e))?;
+
     Ok(result.is_none())
 }
 
 /// Run database migrations
 async fn run_migrations(pool: &SqlitePool) -> Result<(), String> {
     tracing::info!("Starting migrations");
-    
+
     // Read the migration SQL file
     let migration_sql = include_str!("../migrations/001_initial_schema.sql");
-    
+
     // Execute the migration
-    sqlx::raw_sql(migration_sql)
-        .execute(pool)
-        .await
-        .map_err(|e| {
-            tracing::error!("Migration error: {}", e);
-            format!("Failed to run migrations: {}", e)
-        })?;
-    
+    sqlx::raw_sql(migration_sql).execute(pool).await.map_err(|e| {
+        tracing::error!("Migration error: {}", e);
+        format!("Failed to run migrations: {}", e)
+    })?;
+
     tracing::info!("Migrations completed successfully");
     Ok(())
 }
 
 /// Get all raw entries
 #[tauri::command]
-pub async fn get_all_raw_entries(
-    app: AppHandle,
-) -> Result<Vec<Raw>, String> {
+pub async fn get_all_raw_entries(app: AppHandle) -> Result<Vec<Raw>, String> {
     let pool = get_db_pool(&app).await?;
 
     tracing::debug!("Executing query to get all raw entries");
@@ -140,10 +125,7 @@ pub async fn get_all_raw_entries(
     let mut entries = Vec::new();
     for row in rows {
         let id_str: String = row.get("id");
-        let id = RawId(
-            uuid::Uuid::parse_str(&id_str)
-                .map_err(|e| format!("Invalid UUID: {}", e))?,
-        );
+        let id = RawId(uuid::Uuid::parse_str(&id_str).map_err(|e| format!("Invalid UUID: {}", e))?);
 
         let created_at_str: String = row.get("created_at");
         let created_at: DateTime<Utc> = serde_json::from_str(&created_at_str)
@@ -153,17 +135,19 @@ pub async fn get_all_raw_entries(
         let updated_at: DateTime<Utc> = serde_json::from_str(&updated_at_str)
             .map_err(|e| format!("Failed to parse updated_at: {}", e))?;
 
-        let vibe: Option<Vibe> = if let Some(vibe_json) = row.try_get::<Option<String>, _>("vibe_json").ok().flatten() {
-            if vibe_json == "null" || vibe_json.is_empty() {
-                None
+        let vibe: Option<Vibe> =
+            if let Some(vibe_json) = row.try_get::<Option<String>, _>("vibe_json").ok().flatten() {
+                if vibe_json == "null" || vibe_json.is_empty() {
+                    None
+                } else {
+                    Some(
+                        serde_json::from_str(&vibe_json)
+                            .map_err(|e| format!("Failed to parse vibe: {}", e))?,
+                    )
+                }
             } else {
-                Some(serde_json::from_str(&vibe_json).map_err(|e| {
-                    format!("Failed to parse vibe: {}", e)
-                })?)
-            }
-        } else {
-            None
-        };
+                None
+            };
 
         let source_json: String = row.get("source_json");
         let source: RawSource = serde_json::from_str(&source_json)
@@ -173,13 +157,7 @@ pub async fn get_all_raw_entries(
         let content: RawContent = serde_json::from_str(&content_json)
             .map_err(|e| format!("Failed to parse content: {}", e))?;
 
-        entries.push(Raw {
-            id,
-            created_at,
-            updated_at,
-            vibe,
-            inner: RawInner { source, content },
-        });
+        entries.push(Raw { id, created_at, updated_at, vibe, inner: RawInner { source, content } });
     }
 
     tracing::debug!(entry_count = entries.len(), "Returning raw entries");
@@ -188,28 +166,18 @@ pub async fn get_all_raw_entries(
 
 /// Create a new raw entry
 #[tauri::command]
-pub async fn create_raw_entry(
-    app: AppHandle,
-    inner: RawInner,
-) -> Result<Raw, String> {
+pub async fn create_raw_entry(app: AppHandle, inner: RawInner) -> Result<Raw, String> {
     tracing::debug!("Creating new raw entry");
-    let pool = get_db_pool(&app).await
-        .map_err(|e| {
-            tracing::error!("Database error: {}", e);
-            format!("Database error: {}", e)
-        })?;
+    let pool = get_db_pool(&app).await.map_err(|e| {
+        tracing::error!("Database error: {}", e);
+        format!("Database error: {}", e)
+    })?;
     tracing::debug!("Got database pool");
 
     let id = RawId(uuid::Uuid::now_v7());
     let now = Utc::now();
 
-    let raw = Raw {
-        id,
-        created_at: now,
-        updated_at: now,
-        vibe: None,
-        inner,
-    };
+    let raw = Raw { id, created_at: now, updated_at: now, vibe: None, inner };
 
     let id_str = id.0.to_string();
     let created_at_str = serde_json::to_string(&raw.created_at)
@@ -244,17 +212,11 @@ pub async fn create_raw_entry(
 /// Update a raw entry
 #[tauri::command]
 pub async fn update_raw_entry(
-    app: AppHandle,
-    id: String,
-    inner: Option<RawInner>,
-    vibe: Option<Vibe>,
+    app: AppHandle, id: String, inner: Option<RawInner>, vibe: Option<Vibe>,
 ) -> Result<Raw, String> {
     let pool = get_db_pool(&app).await?;
 
-    let raw_id = RawId(
-        uuid::Uuid::parse_str(&id)
-            .map_err(|e| format!("Invalid UUID: {}", e))?,
-    );
+    let raw_id = RawId(uuid::Uuid::parse_str(&id).map_err(|e| format!("Invalid UUID: {}", e))?);
 
     // Get existing entry
     let row = sqlx::query(
@@ -274,8 +236,7 @@ pub async fn update_raw_entry(
         new_inner.source.clone()
     } else {
         let source_json: String = row.get("source_json");
-        serde_json::from_str(&source_json)
-            .map_err(|e| format!("Failed to parse source: {}", e))?
+        serde_json::from_str(&source_json).map_err(|e| format!("Failed to parse source: {}", e))?
     };
 
     let content: RawContent = if let Some(ref new_inner) = inner {
@@ -293,9 +254,10 @@ pub async fn update_raw_entry(
             if vibe_json == "null" || vibe_json.is_empty() {
                 None
             } else {
-                Some(serde_json::from_str(&vibe_json).map_err(|e| {
-                    format!("Failed to parse vibe: {}", e)
-                })?)
+                Some(
+                    serde_json::from_str(&vibe_json)
+                        .map_err(|e| format!("Failed to parse vibe: {}", e))?,
+                )
             }
         } else {
             None
@@ -315,8 +277,7 @@ pub async fn update_raw_entry(
     let updated_at_str = serde_json::to_string(&raw.updated_at)
         .map_err(|e| format!("Failed to serialize updated_at: {}", e))?;
     let vibe_json = if let Some(ref v) = raw.vibe {
-        serde_json::to_string(v)
-            .map_err(|e| format!("Failed to serialize vibe: {}", e))?
+        serde_json::to_string(v).map_err(|e| format!("Failed to serialize vibe: {}", e))?
     } else {
         "null".to_string()
     };
@@ -342,10 +303,7 @@ pub async fn update_raw_entry(
 
 /// Delete a raw entry
 #[tauri::command]
-pub async fn delete_raw_entry(
-    app: AppHandle,
-    id: String,
-) -> Result<(), String> {
+pub async fn delete_raw_entry(app: AppHandle, id: String) -> Result<(), String> {
     let pool = get_db_pool(&app).await?;
 
     sqlx::query("DELETE FROM raw_entries WHERE id = ?")
@@ -359,9 +317,7 @@ pub async fn delete_raw_entry(
 
 /// Get all cubes
 #[tauri::command]
-pub async fn get_all_cubes(
-    app: AppHandle,
-) -> Result<Vec<Cube>, String> {
+pub async fn get_all_cubes(app: AppHandle) -> Result<Vec<Cube>, String> {
     let pool = get_db_pool(&app).await?;
 
     let rows = sqlx::query(
@@ -374,10 +330,8 @@ pub async fn get_all_cubes(
     let mut cubes = Vec::new();
     for row in rows {
         let id_str: String = row.get("id");
-        let id = CubeId(
-            uuid::Uuid::parse_str(&id_str)
-                .map_err(|e| format!("Invalid UUID: {}", e))?,
-        );
+        let id =
+            CubeId(uuid::Uuid::parse_str(&id_str).map_err(|e| format!("Invalid UUID: {}", e))?);
 
         let pin: i64 = row.get("pin");
         let pin_bool = pin != 0;
@@ -394,11 +348,7 @@ pub async fn get_all_cubes(
 
 /// Create a new cube
 #[tauri::command]
-pub async fn create_cube(
-    app: AppHandle,
-    pin: bool,
-    content: CubeContent,
-) -> Result<Cube, String> {
+pub async fn create_cube(app: AppHandle, pin: bool, content: CubeContent) -> Result<Cube, String> {
     let pool = get_db_pool(&app).await?;
 
     let id = CubeId(uuid::Uuid::now_v7());
@@ -434,27 +384,19 @@ pub async fn create_cube(
 /// Update a cube
 #[tauri::command]
 pub async fn update_cube(
-    app: AppHandle,
-    id: String,
-    pin: Option<bool>,
-    content: Option<CubeContent>,
+    app: AppHandle, id: String, pin: Option<bool>, content: Option<CubeContent>,
 ) -> Result<Cube, String> {
     let pool = get_db_pool(&app).await?;
 
-    let cube_id = CubeId(
-        uuid::Uuid::parse_str(&id)
-            .map_err(|e| format!("Invalid UUID: {}", e))?,
-    );
+    let cube_id = CubeId(uuid::Uuid::parse_str(&id).map_err(|e| format!("Invalid UUID: {}", e))?);
 
     // Get existing cube
-    let row = sqlx::query(
-        "SELECT id, pin, content_json FROM cubes WHERE id = ?"
-    )
-    .bind(&id)
-    .fetch_optional(&pool)
-    .await
-    .map_err(|e| format!("Query error: {}", e))?
-    .ok_or("Cube not found")?;
+    let row = sqlx::query("SELECT id, pin, content_json FROM cubes WHERE id = ?")
+        .bind(&id)
+        .fetch_optional(&pool)
+        .await
+        .map_err(|e| format!("Query error: {}", e))?
+        .ok_or("Cube not found")?;
 
     let current_pin: i64 = row.get("pin");
     let current_pin_bool = current_pin != 0;
@@ -466,11 +408,7 @@ pub async fn update_cube(
     let new_pin = pin.unwrap_or(current_pin_bool);
     let new_content = content.unwrap_or(current_content);
 
-    let cube = Cube {
-        id: cube_id,
-        pin: new_pin,
-        content: new_content,
-    };
+    let cube = Cube { id: cube_id, pin: new_pin, content: new_content };
 
     let updated_at_str = serde_json::to_string(&Utc::now())
         .map_err(|e| format!("Failed to serialize updated_at: {}", e))?;
@@ -478,26 +416,21 @@ pub async fn update_cube(
     let content_json = serde_json::to_string(&cube.content)
         .map_err(|e| format!("Failed to serialize content: {}", e))?;
 
-    sqlx::query(
-        "UPDATE cubes SET pin = ?, content_json = ?, updated_at = ? WHERE id = ?"
-    )
-    .bind(pin_int)
-    .bind(&content_json)
-    .bind(&updated_at_str)
-    .bind(&id)
-    .execute(&pool)
-    .await
-    .map_err(|e| format!("Failed to update cube: {}", e))?;
+    sqlx::query("UPDATE cubes SET pin = ?, content_json = ?, updated_at = ? WHERE id = ?")
+        .bind(pin_int)
+        .bind(&content_json)
+        .bind(&updated_at_str)
+        .bind(&id)
+        .execute(&pool)
+        .await
+        .map_err(|e| format!("Failed to update cube: {}", e))?;
 
     Ok(cube)
 }
 
 /// Delete a cube
 #[tauri::command]
-pub async fn delete_cube(
-    app: AppHandle,
-    id: String,
-) -> Result<(), String> {
+pub async fn delete_cube(app: AppHandle, id: String) -> Result<(), String> {
     let pool = get_db_pool(&app).await?;
 
     sqlx::query("DELETE FROM cubes WHERE id = ?")

@@ -22,35 +22,63 @@ pub fn App() -> impl IntoView {
     spawn_local(async move {
         web_sys::console::log_1(&"Starting to load raw entries from database...".into());
         match tauri_api::get_all_raw_entries().await {
-            Ok(entries) => {
-                web_sys::console::log_1(&format!("Successfully loaded {} raw entries", entries.len()).into());
+            | Ok(entries) => {
+                web_sys::console::log_1(
+                    &format!("Successfully loaded {} raw entries", entries.len()).into(),
+                );
                 if entries.is_empty() {
-                    web_sys::console::log_1(&"Database is empty, creating dummy raw entries...".into());
+                    web_sys::console::log_1(
+                        &"Database is empty, creating dummy raw entries...".into(),
+                    );
                     // Seed with dummy data if database is empty
                     let dummy_entries = create_dummy_raw_entries();
                     let dummy_count = dummy_entries.len();
-                    web_sys::console::log_1(&format!("Created {} dummy entry definitions", dummy_count).into());
+                    web_sys::console::log_1(
+                        &format!("Created {} dummy entry definitions", dummy_count).into(),
+                    );
                     let mut created_entries = Vec::new();
                     for (index, inner) in dummy_entries.into_iter().enumerate() {
-                        web_sys::console::log_1(&format!("Creating dummy entry {} of {}", index + 1, dummy_count).into());
+                        web_sys::console::log_1(
+                            &format!("Creating dummy entry {} of {}", index + 1, dummy_count)
+                                .into(),
+                        );
                         match tauri_api::create_raw_entry(inner).await {
-                            Ok(raw) => {
-                                web_sys::console::log_1(&format!("Successfully created raw entry with id: {}", raw.id.0).into());
+                            | Ok(raw) => {
+                                web_sys::console::log_1(
+                                    &format!(
+                                        "Successfully created raw entry with id: {}",
+                                        raw.id.0
+                                    )
+                                    .into(),
+                                );
                                 created_entries.push(raw);
                             }
-                            Err(e) => {
-                                web_sys::console::error_1(&format!("Failed to create dummy raw entry {}: {}", index + 1, e).into());
+                            | Err(e) => {
+                                web_sys::console::error_1(
+                                    &format!(
+                                        "Failed to create dummy raw entry {}: {}",
+                                        index + 1,
+                                        e
+                                    )
+                                    .into(),
+                                );
                             }
                         }
                     }
-                    web_sys::console::log_1(&format!("Setting {} created entries to signal", created_entries.len()).into());
+                    web_sys::console::log_1(
+                        &format!("Setting {} created entries to signal", created_entries.len())
+                            .into(),
+                    );
                     raw_entries_clone.set(created_entries);
                 } else {
-                    web_sys::console::log_1(&format!("Database has {} entries, using existing data", entries.len()).into());
+                    web_sys::console::log_1(
+                        &format!("Database has {} entries, using existing data", entries.len())
+                            .into(),
+                    );
                     raw_entries_clone.set(entries);
                 }
             }
-            Err(e) => {
+            | Err(e) => {
                 web_sys::console::error_1(&format!("Failed to load raw entries: {}", e).into());
             }
         }
@@ -62,8 +90,8 @@ pub fn App() -> impl IntoView {
     let cubes_clone = cubes.clone();
     spawn_local(async move {
         match tauri_api::get_all_cubes().await {
-            Ok(cubes_data) => cubes_clone.set(cubes_data),
-            Err(e) => {
+            | Ok(cubes_data) => cubes_clone.set(cubes_data),
+            | Err(e) => {
                 web_sys::console::error_1(&format!("Failed to load cubes: {}", e).into());
             }
         }
@@ -503,7 +531,7 @@ fn format_raw_source(source: &RawSource) -> String {
 /// Create dummy raw entries for seeding the database
 fn create_dummy_raw_entries() -> Vec<RawInner> {
     use uuid::Uuid;
-    
+
     vec![
         RawInner {
             source: RawSource::Clipboard {

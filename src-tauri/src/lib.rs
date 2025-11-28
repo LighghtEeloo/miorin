@@ -6,12 +6,6 @@ use db::*;
 use watcher::*;
 use settings::*;
 
-// Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-#[tauri::command]
-fn greet(name: &str) -> String {
-    format!("Hello, {}! You've been greeted from Rust!", name)
-}
-
 #[tauri::command]
 fn toggle_devtools(window: tauri::WebviewWindow) {
     window.open_devtools();
@@ -26,7 +20,7 @@ pub fn run() {
                 .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("info")),
         )
         .init();
-    
+
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_store::Builder::default().build())
@@ -44,7 +38,6 @@ pub fn run() {
                 .build(),
         )
         .invoke_handler(tauri::generate_handler![
-            greet,
             toggle_devtools,
             get_watch_paths_cmd,
             set_watch_paths_cmd,

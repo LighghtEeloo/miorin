@@ -8,54 +8,49 @@ use web_sys;
 
 /// Helper function to invoke Tauri commands
 async fn invoke_tauri<T: Serialize, R: for<'de> Deserialize<'de>>(
-    cmd: &str,
-    args: T,
+    cmd: &str, args: T,
 ) -> Result<R, String> {
     web_sys::console::log_1(&format!("invoke_tauri: Calling command '{}'", cmd).into());
-    
+
     // Get the Tauri invoke function from window.__TAURI__.core.invoke
     let window = web_sys::window().ok_or("Window not available")?;
     let tauri = js_sys::Reflect::get(&window, &JsValue::from_str("__TAURI__"))
         .map_err(|_| "Tauri API not available - make sure you're running in Tauri environment")?;
     web_sys::console::log_1(&"invoke_tauri: Found __TAURI__ object".into());
-    
+
     let core = js_sys::Reflect::get(&tauri, &JsValue::from_str("core"))
         .map_err(|_| "Tauri core API not available")?;
     web_sys::console::log_1(&"invoke_tauri: Found core object".into());
-    
+
     let invoke_fn = js_sys::Reflect::get(&core, &JsValue::from_str("invoke"))
         .map_err(|_| "Tauri invoke function not available")?;
     web_sys::console::log_1(&"invoke_tauri: Found invoke function".into());
-    
-    let args_js = serde_wasm_bindgen::to_value(&args)
-        .map_err(|e| {
-            let err_msg = format!("Failed to serialize args: {}", e);
-            web_sys::console::error_1(&err_msg.clone().into());
-            err_msg
-        })?;
-    
+
+    let args_js = serde_wasm_bindgen::to_value(&args).map_err(|e| {
+        let err_msg = format!("Failed to serialize args: {}", e);
+        web_sys::console::error_1(&err_msg.clone().into());
+        err_msg
+    })?;
+
     web_sys::console::log_1(&"invoke_tauri: Serialized args, calling invoke...".into());
-    
+
     // Call the invoke function: invoke(cmd, args)
     let cmd_js = JsValue::from_str(cmd);
-    let promise = js_sys::Function::from(invoke_fn)
-        .call2(&core, &cmd_js, &args_js)
-        .map_err(|e| {
+    let promise =
+        js_sys::Function::from(invoke_fn).call2(&core, &cmd_js, &args_js).map_err(|e| {
             let err_msg = format!("Failed to call invoke function: {:?}", e);
             web_sys::console::error_1(&err_msg.clone().into());
             err_msg
         })?;
-    
+
     let promise = Promise::from(promise);
     web_sys::console::log_1(&"invoke_tauri: Got promise, awaiting...".into());
-    let result = JsFuture::from(promise)
-        .await
-        .map_err(|e| {
-            let err_msg = format!("Invoke error: {:?}", e);
-            web_sys::console::error_1(&err_msg.clone().into());
-            err_msg
-        })?;
-    
+    let result = JsFuture::from(promise).await.map_err(|e| {
+        let err_msg = format!("Invoke error: {:?}", e);
+        web_sys::console::error_1(&err_msg.clone().into());
+        err_msg
+    })?;
+
     web_sys::console::log_1(&"invoke_tauri: Got result, checking for errors...".into());
     // Check if result is an error (Tauri returns errors as objects with an error field)
     if js_sys::Reflect::has(&result, &JsValue::from_str("error")).unwrap_or(false) {
@@ -67,31 +62,40 @@ async fn invoke_tauri<T: Serialize, R: for<'de> Deserialize<'de>>(
         } else {
             format!("{:?}", error_val)
         };
-        web_sys::console::error_1(&format!("invoke_tauri: Command returned error: {}", error_msg).into());
+        web_sys::console::error_1(
+            &format!("invoke_tauri: Command returned error: {}", error_msg).into(),
+        );
         return Err(error_msg);
     }
-    
+
     web_sys::console::log_1(&"invoke_tauri: Deserializing result...".into());
-    let deserialized = serde_wasm_bindgen::from_value(result)
-        .map_err(|e| {
-            let err_msg = format!("Failed to deserialize result: {}", e);
-            web_sys::console::error_1(&err_msg.clone().into());
-            err_msg
-        })?;
-    web_sys::console::log_1(&format!("invoke_tauri: Successfully completed command '{}'", cmd).into());
+    let deserialized = serde_wasm_bindgen::from_value(result).map_err(|e| {
+        let err_msg = format!("Failed to deserialize result: {}", e);
+        web_sys::console::error_1(&err_msg.clone().into());
+        err_msg
+    })?;
+    web_sys::console::log_1(
+        &format!("invoke_tauri: Successfully completed command '{}'", cmd).into(),
+    );
     Ok(deserialized)
 }
 
 /// Get all raw entries from the database
 pub async fn get_all_raw_entries() -> Result<Vec<Raw>, String> {
     web_sys::console::log_1(&"tauri_api::get_all_raw_entries: Starting invoke...".into());
-    let result: Result<Vec<Raw>, String> = invoke_tauri("get_all_raw_entries", serde_json::json!({})).await;
+    let result: Result<Vec<Raw>, String> =
+        invoke_tauri("get_all_raw_entries", serde_json::json!({})).await;
     match &result {
-        Ok(entries) => {
-            web_sys::console::log_1(&format!("tauri_api::get_all_raw_entries: Success, got {} entries", entries.len()).into());
+        | Ok(entries) => {
+            web_sys::console::log_1(
+                &format!("tauri_api::get_all_raw_entries: Success, got {} entries", entries.len())
+                    .into(),
+            );
         }
-        Err(e) => {
-            web_sys::console::error_1(&format!("tauri_api::get_all_raw_entries: Error - {}", e).into());
+        | Err(e) => {
+            web_sys::console::error_1(
+                &format!("tauri_api::get_all_raw_entries: Error - {}", e).into(),
+            );
         }
     }
     result
@@ -105,13 +109,22 @@ pub async fn get_all_cubes() -> Result<Vec<Cube>, String> {
 /// Create a new raw entry
 pub async fn create_raw_entry(inner: RawInner) -> Result<Raw, String> {
     web_sys::console::log_1(&"tauri_api::create_raw_entry: Starting invoke...".into());
-    let result: Result<Raw, String> = invoke_tauri("create_raw_entry", serde_json::json!({ "inner": inner })).await;
+    let result: Result<Raw, String> =
+        invoke_tauri("create_raw_entry", serde_json::json!({ "inner": inner })).await;
     match &result {
-        Ok(raw) => {
-            web_sys::console::log_1(&format!("tauri_api::create_raw_entry: Success, created entry with id: {}", raw.id.0).into());
+        | Ok(raw) => {
+            web_sys::console::log_1(
+                &format!(
+                    "tauri_api::create_raw_entry: Success, created entry with id: {}",
+                    raw.id.0
+                )
+                .into(),
+            );
         }
-        Err(e) => {
-            web_sys::console::error_1(&format!("tauri_api::create_raw_entry: Error - {}", e).into());
+        | Err(e) => {
+            web_sys::console::error_1(
+                &format!("tauri_api::create_raw_entry: Error - {}", e).into(),
+            );
         }
     }
     result
@@ -124,28 +137,18 @@ pub async fn create_cube(pin: bool, content: CubeContent) -> Result<Cube, String
 
 /// Update a raw entry
 pub async fn update_raw_entry(
-    id: String,
-    inner: Option<RawInner>,
-    vibe: Option<Vibe>,
+    id: String, inner: Option<RawInner>, vibe: Option<Vibe>,
 ) -> Result<Raw, String> {
-    invoke_tauri(
-        "update_raw_entry",
-        serde_json::json!({ "id": id, "inner": inner, "vibe": vibe }),
-    )
-    .await
+    invoke_tauri("update_raw_entry", serde_json::json!({ "id": id, "inner": inner, "vibe": vibe }))
+        .await
 }
 
 /// Update a cube
 pub async fn update_cube(
-    id: String,
-    pin: Option<bool>,
-    content: Option<CubeContent>,
+    id: String, pin: Option<bool>, content: Option<CubeContent>,
 ) -> Result<Cube, String> {
-    invoke_tauri(
-        "update_cube",
-        serde_json::json!({ "id": id, "pin": pin, "content": content }),
-    )
-    .await
+    invoke_tauri("update_cube", serde_json::json!({ "id": id, "pin": pin, "content": content }))
+        .await
 }
 
 /// Delete a raw entry
@@ -157,4 +160,3 @@ pub async fn delete_raw_entry(id: String) -> Result<(), String> {
 pub async fn delete_cube(id: String) -> Result<(), String> {
     invoke_tauri("delete_cube", serde_json::json!({ "id": id })).await
 }
-
