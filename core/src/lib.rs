@@ -1,7 +1,7 @@
 pub mod meta;
 pub mod raw;
 pub mod preview;
-pub mod block;
+pub mod cube;
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -13,5 +13,5 @@ pub mod prelude {
     pub use crate::meta::*;
     pub use crate::raw::*;
     pub use crate::preview::*;
-    pub use crate::block::*;
+    pub use crate::cube::*;
 }

@@ -39,7 +39,7 @@ pub fn App() -> impl IntoView {
                 </div>
                 <div class="panel-content">
                     <div class="workspace-editor">
-                        <p class="placeholder-text">"Select a document from Glacier or drag raw material from Stream to start editing..."</p>
+                        <p class="placeholder-text">"Select a cube from Glacier or drag raw material from Stream to start editing..."</p>
                     </div>
                 </div>
             </div>
@@ -172,7 +172,7 @@ fn create_dummy_raw_entries() -> Vec<RawEntry> {
 fn create_dummy_documents() -> Vec<Document> {
     vec![
         Document {
-            id: BlockId(Uuid::now_v7()),
+            id: CubeId(Uuid::now_v7()),
             created_at: Utc::now() - chrono::Duration::days(2),
             updated_at: Utc::now() - chrono::Duration::hours(5),
             vibe: Some(Vibe {
@@ -183,23 +183,23 @@ fn create_dummy_documents() -> Vec<Document> {
             }),
             inner: DocumentInner {
                 title: "Daily Reflection - Nov 26".to_string(),
-                blocks: vec![],
+                cubes: vec![],
                 links: vec![],
             },
         },
         Document {
-            id: BlockId(Uuid::now_v7()),
+            id: CubeId(Uuid::now_v7()),
             created_at: Utc::now() - chrono::Duration::days(1),
             updated_at: Utc::now() - chrono::Duration::hours(2),
             vibe: None,
             inner: DocumentInner {
                 title: "Project Ideas".to_string(),
-                blocks: vec![],
+                cubes: vec![],
                 links: vec![],
             },
         },
         Document {
-            id: BlockId(Uuid::now_v7()),
+            id: CubeId(Uuid::now_v7()),
             created_at: Utc::now() - chrono::Duration::hours(12),
             updated_at: Utc::now() - chrono::Duration::minutes(30),
             vibe: Some(Vibe {
@@ -210,7 +210,7 @@ fn create_dummy_documents() -> Vec<Document> {
             }),
             inner: DocumentInner {
                 title: "Team Meeting - Nov 27".to_string(),
-                blocks: vec![],
+                cubes: vec![],
                 links: vec![],
             },
         },

@@ -2,33 +2,33 @@ use super::*;
 use crate::prelude::*;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct BlockId(pub Uuid);
+pub struct CubeId(pub Uuid);
 
-pub type Document = Meta<BlockId, DocumentInner>;
+pub type Document = Meta<CubeId, DocumentInner>;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct DocumentInner {
     pub title: String,
-    /// Flat list of blocks; use parent/index for structure.
-    pub blocks: Vec<Block>,
+    /// Flat list of cubes; use parent/index for structure.
+    pub cubes: Vec<Cube>,
 
-    /// Graph edges between blocks.
+    /// Graph edges between cubes.
     pub links: Vec<Link>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct Block {
-    pub id: BlockId,
+pub struct Cube {
+    pub id: CubeId,
     /// None = top-level.
-    pub parent: Option<BlockId>,
+    pub parent: Option<CubeId>,
     /// Order among siblings.
     pub index: u32,
-    /// The type of block.
-    pub kind: BlockKind,
+    /// The type of cube.
+    pub kind: CubeKind,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub enum BlockKind {
+pub enum CubeKind {
     Document(Document),
     Paragraph {
         text: RichText,
@@ -109,7 +109,7 @@ pub type Link = Meta<LinkId, LinkInner>;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct LinkInner {
-    pub from: BlockId,
-    pub to: BlockId,
+    pub from: CubeId,
+    pub to: CubeId,
     pub kind: LinkKind,
 }
