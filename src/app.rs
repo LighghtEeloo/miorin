@@ -6,8 +6,7 @@ use wasm_bindgen_futures::spawn_local;
 
 #[component]
 fn MainView(
-    cubes: RwSignal<Vec<Cube>>,
-    raw_entries: RwSignal<Vec<Raw>>,
+    cubes: RwSignal<Vec<Cube>>, raw_entries: RwSignal<Vec<Raw>>,
     open_settings: impl Fn(web_sys::MouseEvent) + 'static,
 ) -> impl IntoView {
     let app_container_styles = style! {

@@ -188,7 +188,7 @@ pub fn Settings(close_settings: impl Fn() + 'static) -> impl IntoView {
 
     // New path input
     let new_path = RwSignal::new(String::new());
-    
+
     // Error message state
     let error_message = RwSignal::new(Option::<String>::None);
 
@@ -198,10 +198,10 @@ pub fn Settings(close_settings: impl Fn() + 'static) -> impl IntoView {
         async move {
             // Load watch paths
             match tauri_api::get_watch_paths().await {
-                Ok(paths) => {
+                | Ok(paths) => {
                     watch_paths_clone.set(paths);
                 }
-                Err(e) => {
+                | Err(e) => {
                     web_sys::console::error_1(&format!("Failed to load watch paths: {}", e).into());
                 }
             }
@@ -218,13 +218,13 @@ pub fn Settings(close_settings: impl Fn() + 'static) -> impl IntoView {
             if !path.is_empty() {
                 // Clear previous error
                 error_message.set(None);
-                
+
                 let watch_paths_clone = watch_paths.clone();
                 let new_path_clone = new_path.clone();
                 let error_message_clone = error_message.clone();
                 spawn_local(async move {
                     match tauri_api::add_watch_path(path.clone()).await {
-                        Ok(canonical_path) => {
+                        | Ok(canonical_path) => {
                             web_sys::console::log_1(
                                 &format!("Successfully added path: {}", canonical_path).into(),
                             );
@@ -234,18 +234,19 @@ pub fn Settings(close_settings: impl Fn() + 'static) -> impl IntoView {
                             error_message_clone.set(None);
                             // Reload paths
                             match tauri_api::get_watch_paths().await {
-                                Ok(paths) => {
+                                | Ok(paths) => {
                                     watch_paths_clone.set(paths);
                                 }
-                                Err(e) => {
-                                    error_message_clone.set(Some(format!("Failed to reload watch paths: {}", e)));
+                                | Err(e) => {
+                                    error_message_clone
+                                        .set(Some(format!("Failed to reload watch paths: {}", e)));
                                     web_sys::console::error_1(
                                         &format!("Failed to reload watch paths: {}", e).into(),
                                     );
                                 }
                             }
                         }
-                        Err(e) => {
+                        | Err(e) => {
                             error_message_clone.set(Some(e.clone()));
                             web_sys::console::error_1(
                                 &format!("Failed to add watch path: {}", e).into(),
@@ -262,20 +263,20 @@ pub fn Settings(close_settings: impl Fn() + 'static) -> impl IntoView {
         let watch_paths_clone = watch_paths.clone();
         spawn_local(async move {
             match tauri_api::remove_watch_path(path.clone()).await {
-                Ok(_) => {
+                | Ok(_) => {
                     // Reload paths
                     match tauri_api::get_watch_paths().await {
-                        Ok(paths) => {
+                        | Ok(paths) => {
                             watch_paths_clone.set(paths);
                         }
-                        Err(e) => {
+                        | Err(e) => {
                             web_sys::console::error_1(
                                 &format!("Failed to reload watch paths: {}", e).into(),
                             );
                         }
                     }
                 }
-                Err(e) => {
+                | Err(e) => {
                     web_sys::console::error_1(
                         &format!("Failed to remove watch path: {}", e).into(),
                     );
@@ -289,20 +290,20 @@ pub fn Settings(close_settings: impl Fn() + 'static) -> impl IntoView {
         let watch_paths_clone = watch_paths.clone();
         spawn_local(async move {
             match tauri_api::toggle_watch_path_enabled(path.clone(), enabled).await {
-                Ok(_) => {
+                | Ok(_) => {
                     // Reload paths
                     match tauri_api::get_watch_paths().await {
-                        Ok(paths) => {
+                        | Ok(paths) => {
                             watch_paths_clone.set(paths);
                         }
-                        Err(e) => {
+                        | Err(e) => {
                             web_sys::console::error_1(
                                 &format!("Failed to reload watch paths: {}", e).into(),
                             );
                         }
                     }
                 }
-                Err(e) => {
+                | Err(e) => {
                     web_sys::console::error_1(
                         &format!("Failed to toggle watch path: {}", e).into(),
                     );
@@ -417,4 +418,3 @@ pub fn Settings(close_settings: impl Fn() + 'static) -> impl IntoView {
         </div>
     }
 }
-

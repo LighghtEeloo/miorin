@@ -189,6 +189,9 @@ pub async fn remove_watch_path(path: String) -> Result<(), String> {
 
 /// Toggle enabled state for a watch path
 pub async fn toggle_watch_path_enabled(path: String, enabled: bool) -> Result<(), String> {
-    invoke_tauri("toggle_watch_path_enabled_cmd", serde_json::json!({ "path": path, "enabled": enabled })).await
+    invoke_tauri(
+        "toggle_watch_path_enabled_cmd",
+        serde_json::json!({ "path": path, "enabled": enabled }),
+    )
+    .await
 }
-

@@ -11,7 +11,6 @@ fn toggle_devtools(window: tauri::WebviewWindow) {
     window.open_devtools();
 }
 
-
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // Initialize tracing subscriber
