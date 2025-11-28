@@ -6,6 +6,133 @@ use miorin_core::prelude::*;
 use styled::style;
 use wasm_bindgen_futures::spawn_local;
 
+// Common panel styles - helper functions that return the style! macro result
+fn panel_wrapper_styles() -> Result<styled::Style, stylist::Error> {
+    style! {
+        .panel-wrapper {
+            height: 100%;
+            max-height: 100%;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+    }
+}
+
+fn panel_styles() -> Result<styled::Style, stylist::Error> {
+    style! {
+        .panel {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            max-height: 100%;
+            min-height: 0;
+            border-right: 1px solid var(--color-border);
+            background-color: var(--color-panel-bg);
+            overflow: hidden;
+        }
+        .panel:last-child {
+            border-right: none;
+        }
+    }
+}
+
+fn panel_header_styles() -> Result<styled::Style, stylist::Error> {
+    style! {
+        .panel-header {
+            flex-shrink: 0;
+            padding: 1rem;
+            border-bottom: 1px solid var(--color-border);
+            background-color: var(--color-panel-header-bg);
+        }
+        .panel-header h2 {
+            margin: 0;
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--color-text);
+        }
+    }
+}
+
+fn panel_header_with_actions_styles() -> Result<styled::Style, stylist::Error> {
+    style! {
+        .panel-header {
+            flex-shrink: 0;
+            padding: 1rem;
+            border-bottom: 1px solid var(--color-border);
+            background-color: var(--color-panel-header-bg);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .panel-header h2 {
+            margin: 0;
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--color-text);
+        }
+        .settings-button {
+            padding: 6px;
+            background: var(--color-secondary, #6c757d);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            min-width: 28px;
+            transition: background-color 0.2s;
+        }
+        .settings-button:hover {
+            background-color: var(--color-secondary-hover, #5a6268);
+        }
+    }
+}
+
+fn panel_content_styles() -> Result<styled::Style, stylist::Error> {
+    style! {
+        .panel-content {
+            flex: 1 1 0;
+            min-height: 0;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: 0.5rem;
+            scrollbar-width: auto;
+            scrollbar-color: #888 #f0f0f0;
+            box-sizing: border-box;
+        }
+        .panel-content::-webkit-scrollbar {
+            width: 12px;
+            display: block;
+        }
+        .panel-content::-webkit-scrollbar-track {
+            background: #f0f0f0;
+            border-radius: 6px;
+        }
+        .panel-content::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 6px;
+            border: 2px solid #f0f0f0;
+        }
+        .panel-content::-webkit-scrollbar-thumb:hover {
+            background: #666;
+        }
+    }
+}
+
+fn entries_list_styles() -> Result<styled::Style, stylist::Error> {
+    style! {
+        .entries-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+    }
+}
+
 #[component]
 fn MainView(
     cubes: RwSignal<Vec<Cube>>, raw_entries: RwSignal<Vec<Raw>>,
@@ -16,6 +143,7 @@ fn MainView(
             display: grid;
             grid-template-columns: 250px 1fr 300px;
             height: 100vh;
+            max-height: 100vh;
             overflow: hidden;
             background-color: var(--color-bg);
         }
@@ -24,7 +152,7 @@ fn MainView(
     styled::view! { app_container_styles,
         <div class="app-container">
             <GlacierPanel cubes=cubes />
-            <WorkspacePanel />
+            <Workspace />
             <StreamPanel raw_entries=raw_entries open_settings=open_settings />
         </div>
     }
@@ -101,57 +229,16 @@ pub fn App() -> impl IntoView {
 
 #[component]
 fn GlacierPanel(cubes: RwSignal<Vec<Cube>>) -> impl IntoView {
-    let panel_styles = style! {
-        .panel {
-            display: flex;
-            flex-direction: column;
-            height: 100%;
-            border-right: 1px solid var(--color-border);
-            background-color: var(--color-panel-bg);
-            overflow: hidden;
-        }
-    };
-
-    let panel_header_styles = style! {
-        .panel-header {
-            padding: 1rem;
-            border-bottom: 1px solid var(--color-border);
-            background-color: var(--color-panel-header-bg);
-        }
-        .panel-header h2 {
-            margin: 0;
-            font-size: 1rem;
-            font-weight: 600;
-            color: var(--color-text);
-        }
-    };
-
-    let panel_content_styles = style! {
-        .panel-content {
-            flex: 1;
-            overflow-y: auto;
-            padding: 0.5rem;
-        }
-    };
-
-    let entries_list_styles = style! {
-        .entries-list {
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-        }
-    };
-
-    styled::view! { panel_styles,
+    styled::view! { panel_styles(),
         <div class="panel">
-            {styled::view! { panel_header_styles,
+            {styled::view! { panel_header_styles(),
                 <div class="panel-header">
                     <h2>"Glacier"</h2>
                 </div>
             }}
-            {styled::view! { panel_content_styles,
+            {styled::view! { panel_content_styles(),
                 <div class="panel-content">
-                    {styled::view! { entries_list_styles,
+                    {styled::view! { entries_list_styles(),
                         <div class="entries-list">
                             {move || {
                                 let cubes_data = cubes.get();
@@ -169,7 +256,7 @@ fn GlacierPanel(cubes: RwSignal<Vec<Cube>>) -> impl IntoView {
 }
 
 #[component]
-fn WorkspacePanel() -> impl IntoView {
+fn Workspace() -> impl IntoView {
     let workspace_panel_combined = style! {
         .panel {
             display: flex;
@@ -249,90 +336,29 @@ fn StreamPanel(
     raw_entries: RwSignal<Vec<Raw>>,
     open_settings: impl Fn(web_sys::MouseEvent) + 'static,
 ) -> impl IntoView {
-    let panel_styles = style! {
-        .panel {
-            display: flex;
-            flex-direction: column;
-            height: 100%;
-            border-right: 1px solid var(--color-border);
-            background-color: var(--color-panel-bg);
-            overflow: hidden;
-        }
-        .panel:last-child {
-            border-right: none;
-        }
-    };
-
-    let panel_header_styles = style! {
-        .panel-header {
-            padding: 1rem;
-            border-bottom: 1px solid var(--color-border);
-            background-color: var(--color-panel-header-bg);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .panel-header h2 {
-            margin: 0;
-            font-size: 1rem;
-            font-weight: 600;
-            color: var(--color-text);
-        }
-        .settings-button {
-            padding: 6px;
-            background: var(--color-secondary, #6c757d);
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 28px;
-            height: 28px;
-            min-width: 28px;
-            transition: background-color 0.2s;
-        }
-        .settings-button:hover {
-            background-color: var(--color-secondary-hover, #5a6268);
-        }
-    };
-
-    let panel_content_styles = style! {
-        .panel-content {
-            flex: 1;
-            overflow-y: auto;
-            padding: 0.5rem;
-        }
-    };
-
-    let entries_list_styles = style! {
-        .entries-list {
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-        }
-    };
-
-    styled::view! { panel_styles,
-        <div class="panel">
-            {styled::view! { panel_header_styles,
-                <div class="panel-header">
-                    <h2>"Stream"</h2>
-                    <button class="settings-button" on:click=open_settings>
-                        <Icon icon=LuSettings width="16" height="16" />
-                    </button>
-                </div>
-            }}
-            {styled::view! { panel_content_styles,
-                <div class="panel-content">
-                    {styled::view! { entries_list_styles,
-                        <div class="entries-list">
-                            {move || {
-                                let entries = raw_entries.get();
-                                entries.into_iter()
-                                    .map(|raw| view! { <RawEntry raw=raw /> })
-                                    .collect::<Vec<_>>()
+    styled::view! { panel_wrapper_styles(),
+        <div class="panel-wrapper">
+            {styled::view! { panel_styles(),
+                <div class="panel">
+                    {styled::view! { panel_header_with_actions_styles(),
+                        <div class="panel-header">
+                            <h2>"Stream"</h2>
+                            <button class="settings-button" on:click=open_settings>
+                                <Icon icon=LuSettings width="16" height="16" />
+                            </button>
+                        </div>
+                    }}
+                    {styled::view! { panel_content_styles(),
+                        <div class="panel-content">
+                            {styled::view! { entries_list_styles(),
+                                <div class="entries-list">
+                                    {move || {
+                                        let entries = raw_entries.get();
+                                        entries.into_iter()
+                                            .map(|raw| view! { <RawEntry raw=raw /> })
+                                            .collect::<Vec<_>>()
+                                    }}
+                                </div>
                             }}
                         </div>
                     }}
