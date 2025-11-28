@@ -273,42 +273,27 @@ fn CubeEntry(cube: Cube) -> impl IntoView {
     };
 
     let (title, created_at) = match &cube.content {
-        CubeContent::Document(doc) => {
-            (doc.inner.title.clone(), doc.created_at)
+        | CubeContent::Document(doc) => (doc.inner.title.clone(), doc.created_at),
+        | CubeContent::PreOrder(po) => (format!("PreOrder"), po.created_at),
+        | CubeContent::Order(order) => (format!("Order"), order.created_at),
+        | CubeContent::Paragraph(_) => (format!("Paragraph"), chrono::Utc::now()),
+        | CubeContent::Heading(heading) => {
+            let text = heading.text.segments.iter().map(|s| s.text.clone()).collect::<String>();
+            (
+                if text.is_empty() { format!("Heading H{}", heading.level) } else { text },
+                chrono::Utc::now(),
+            )
         }
-        CubeContent::PreOrder(po) => {
-            (format!("PreOrder"), po.created_at)
-        }
-        CubeContent::Order(order) => {
-            (format!("Order"), order.created_at)
-        }
-        CubeContent::Paragraph(_) => {
-            (format!("Paragraph"), chrono::Utc::now())
-        }
-        CubeContent::Heading(heading) => {
-            let text = heading.text.segments.iter()
-                .map(|s| s.text.clone())
-                .collect::<String>();
-            (if text.is_empty() { format!("Heading H{}", heading.level) } else { text }, chrono::Utc::now())
-        }
-        CubeContent::Todo(todo) => {
-            let text = todo.text.segments.iter()
-                .map(|s| s.text.clone())
-                .collect::<String>();
+        | CubeContent::Todo(todo) => {
+            let text = todo.text.segments.iter().map(|s| s.text.clone()).collect::<String>();
             (if text.is_empty() { "Todo".to_string() } else { text }, chrono::Utc::now())
         }
-        CubeContent::Quote(quote) => {
-            let text = quote.text.segments.iter()
-                .map(|s| s.text.clone())
-                .collect::<String>();
+        | CubeContent::Quote(quote) => {
+            let text = quote.text.segments.iter().map(|s| s.text.clone()).collect::<String>();
             (if text.is_empty() { "Quote".to_string() } else { text }, chrono::Utc::now())
         }
-        CubeContent::Image(_) => {
-            (format!("Image"), chrono::Utc::now())
-        }
-        CubeContent::RawReference(_) => {
-            (format!("Raw Reference"), chrono::Utc::now())
-        }
+        | CubeContent::Image(_) => (format!("Image"), chrono::Utc::now()),
+        | CubeContent::RawReference(_) => (format!("Raw Reference"), chrono::Utc::now()),
     };
     let created = created_at.format("%Y-%m-%d %H:%M").to_string();
     styled::view! { entry_item_styles,
@@ -448,19 +433,16 @@ fn RawPreview(kind: RawContent) -> impl IntoView {
 
 fn format_raw_source(source: &RawSource) -> String {
     match source {
-        RawSource::Clipboard { application } => {
+        | RawSource::Clipboard { application } => {
             format!(
                 "Clipboard{}",
-                application
-                    .as_ref()
-                    .map(|a| format!(" ({})", a))
-                    .unwrap_or_default()
+                application.as_ref().map(|a| format!(" ({})", a)).unwrap_or_default()
             )
         }
-        RawSource::FileWatcher { original_path } => {
+        | RawSource::FileWatcher { original_path } => {
             format!("File: {}", original_path.display())
         }
-        RawSource::ManualImport => "Manual Import".to_string(),
+        | RawSource::ManualImport => "Manual Import".to_string(),
     }
 }
 

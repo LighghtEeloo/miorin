@@ -11,6 +11,7 @@ fn_params_layout = "Compressed"
 # group_imports = "StdExternalCrate"
 # imports_granularity = "Crate"
 reorder_modules = false
+reorder_imports = false
 
 match_arm_leading_pipes = "Always"
 # wrap_comments = true
