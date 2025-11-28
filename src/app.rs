@@ -1,8 +1,8 @@
-use chrono::Utc;
+use crate::tauri_api;
 use leptos::prelude::*;
 use miorin_core::prelude::*;
 use styled::style;
-use uuid::Uuid;
+use wasm_bindgen_futures::spawn_local;
 
 #[component]
 pub fn App() -> impl IntoView {
@@ -16,15 +16,62 @@ pub fn App() -> impl IntoView {
         }
     };
 
-    // Create dummy raw entries
-    let raw_entries = create_dummy_raw_entries();
+    // Load raw entries from database
+    let raw_entries = RwSignal::new(Vec::<Raw>::new());
+    let raw_entries_clone = raw_entries.clone();
+    spawn_local(async move {
+        web_sys::console::log_1(&"Starting to load raw entries from database...".into());
+        match tauri_api::get_all_raw_entries().await {
+            Ok(entries) => {
+                web_sys::console::log_1(&format!("Successfully loaded {} raw entries", entries.len()).into());
+                if entries.is_empty() {
+                    web_sys::console::log_1(&"Database is empty, creating dummy raw entries...".into());
+                    // Seed with dummy data if database is empty
+                    let dummy_entries = create_dummy_raw_entries();
+                    let dummy_count = dummy_entries.len();
+                    web_sys::console::log_1(&format!("Created {} dummy entry definitions", dummy_count).into());
+                    let mut created_entries = Vec::new();
+                    for (index, inner) in dummy_entries.into_iter().enumerate() {
+                        web_sys::console::log_1(&format!("Creating dummy entry {} of {}", index + 1, dummy_count).into());
+                        match tauri_api::create_raw_entry(inner).await {
+                            Ok(raw) => {
+                                web_sys::console::log_1(&format!("Successfully created raw entry with id: {}", raw.id.0).into());
+                                created_entries.push(raw);
+                            }
+                            Err(e) => {
+                                web_sys::console::error_1(&format!("Failed to create dummy raw entry {}: {}", index + 1, e).into());
+                            }
+                        }
+                    }
+                    web_sys::console::log_1(&format!("Setting {} created entries to signal", created_entries.len()).into());
+                    raw_entries_clone.set(created_entries);
+                } else {
+                    web_sys::console::log_1(&format!("Database has {} entries, using existing data", entries.len()).into());
+                    raw_entries_clone.set(entries);
+                }
+            }
+            Err(e) => {
+                web_sys::console::error_1(&format!("Failed to load raw entries: {}", e).into());
+            }
+        }
+        web_sys::console::log_1(&"Finished loading raw entries".into());
+    });
 
-    // Create dummy pinned cubes
-    let pinned_cubes = create_dummy_pinned_cubes();
+    // Load cubes from database
+    let cubes = RwSignal::new(Vec::<Cube>::new());
+    let cubes_clone = cubes.clone();
+    spawn_local(async move {
+        match tauri_api::get_all_cubes().await {
+            Ok(cubes_data) => cubes_clone.set(cubes_data),
+            Err(e) => {
+                web_sys::console::error_1(&format!("Failed to load cubes: {}", e).into());
+            }
+        }
+    });
 
     styled::view! { app_container_styles,
         <div class="app-container">
-            <GlacierPanel cubes=pinned_cubes />
+            <GlacierPanel cubes=cubes />
             <WorkspacePanel />
             <StreamPanel raw_entries=raw_entries />
         </div>
@@ -32,7 +79,7 @@ pub fn App() -> impl IntoView {
 }
 
 #[component]
-fn GlacierPanel(cubes: Vec<Cube>) -> impl IntoView {
+fn GlacierPanel(cubes: RwSignal<Vec<Cube>>) -> impl IntoView {
     let panel_styles = style! {
         .panel {
             display: flex;
@@ -85,9 +132,13 @@ fn GlacierPanel(cubes: Vec<Cube>) -> impl IntoView {
                 <div class="panel-content">
                     {styled::view! { entries_list_styles,
                         <div class="entries-list">
-                            {cubes.into_iter().filter(|cube| cube.pin).map(|cube| {
-                                view! { <CubeEntry cube=cube /> }
-                            }).collect::<Vec<_>>()}
+                            {move || {
+                                let cubes_data = cubes.get();
+                                cubes_data.into_iter()
+                                    .filter(|cube| cube.pin)
+                                    .map(|cube| view! { <CubeEntry cube=cube /> })
+                                    .collect::<Vec<_>>()
+                            }}
                         </div>
                     }}
                 </div>
@@ -173,7 +224,7 @@ fn WorkspacePanel() -> impl IntoView {
 }
 
 #[component]
-fn StreamPanel(raw_entries: Vec<Raw>) -> impl IntoView {
+fn StreamPanel(raw_entries: RwSignal<Vec<Raw>>) -> impl IntoView {
     let panel_styles = style! {
         .panel {
             display: flex;
@@ -229,9 +280,12 @@ fn StreamPanel(raw_entries: Vec<Raw>) -> impl IntoView {
                 <div class="panel-content">
                     {styled::view! { entries_list_styles,
                         <div class="entries-list">
-                            {raw_entries.into_iter().map(|raw| {
-                                view! { <RawEntry raw=raw /> }
-                            }).collect::<Vec<_>>()}
+                            {move || {
+                                let entries = raw_entries.get();
+                                entries.into_iter()
+                                    .map(|raw| view! { <RawEntry raw=raw /> })
+                                    .collect::<Vec<_>>()
+                            }}
                         </div>
                     }}
                 </div>
@@ -446,144 +500,50 @@ fn format_raw_source(source: &RawSource) -> String {
     }
 }
 
-fn create_dummy_raw_entries() -> Vec<Raw> {
+/// Create dummy raw entries for seeding the database
+fn create_dummy_raw_entries() -> Vec<RawInner> {
+    use uuid::Uuid;
+    
     vec![
-        Raw {
-            id: RawId(Uuid::now_v7()),
-            created_at: Utc::now() - chrono::Duration::hours(2),
-            updated_at: Utc::now() - chrono::Duration::hours(2),
-            vibe: None,
-            inner: RawInner {
-                source: RawSource::Clipboard {
-                    application: Some("Chrome".to_string()),
-                },
-                content: RawContent::Text(TextRaw {
-                    content: "This is a note I copied from a website about Rust programming.".to_string(),
-                    mime_type: Some("text/plain".to_string()),
-                    language: Some("en".to_string()),
-                }),
+        RawInner {
+            source: RawSource::Clipboard {
+                application: Some("Chrome".to_string()),
             },
-        },
-        Raw {
-            id: RawId(Uuid::now_v7()),
-            created_at: Utc::now() - chrono::Duration::hours(1),
-            updated_at: Utc::now() - chrono::Duration::hours(1),
-            vibe: None,
-            inner: RawInner {
-                source: RawSource::FileWatcher {
-                    original_path: std::path::PathBuf::from("/Users/me/Documents/notes.txt"),
-                },
-                content: RawContent::Text(TextRaw {
-                    content: "A longer piece of text that was automatically collected from a watched folder. This demonstrates how the file watcher works.".to_string(),
-                    mime_type: Some("text/plain".to_string()),
-                    language: Some("en".to_string()),
-                }),
-            },
-        },
-        Raw {
-            id: RawId(Uuid::now_v7()),
-            created_at: Utc::now() - chrono::Duration::minutes(30),
-            updated_at: Utc::now() - chrono::Duration::minutes(30),
-            vibe: None,
-            inner: RawInner {
-                source: RawSource::Clipboard {
-                    application: Some("VSCode".to_string()),
-                },
-                content: RawContent::Text(TextRaw {
-                    content: "function hello() { console.log('Hello, world!'); }".to_string(),
-                    mime_type: Some("text/plain".to_string()),
-                    language: Some("javascript".to_string()),
-                }),
-            },
-        },
-        Raw {
-            id: RawId(Uuid::now_v7()),
-            created_at: Utc::now() - chrono::Duration::minutes(15),
-            updated_at: Utc::now() - chrono::Duration::minutes(15),
-            vibe: None,
-            inner: RawInner {
-                source: RawSource::ManualImport,
-                content: RawContent::Image(ImageRaw {
-                    blob_id: BlobId(Uuid::now_v7()),
-                    width: 1920,
-                    height: 1080,
-                    format: Some("png".to_string()),
-                    thumbnail_blob_id: None,
-                    dominant_color_rgb: Some([120, 150, 200]),
-                }),
-            },
-        },
-    ]
-}
-
-fn create_dummy_pinned_cubes() -> Vec<Cube> {
-    vec![
-        Cube {
-            id: CubeId(Uuid::now_v7()),
-            pin: true,
-            content: CubeContent::Document(Document {
-                id: CubeId(Uuid::now_v7()),
-                created_at: Utc::now() - chrono::Duration::days(2),
-                updated_at: Utc::now() - chrono::Duration::hours(5),
-                vibe: Some(Vibe {
-                    title: Some("Daily Reflection".to_string()),
-                    summary: Some("Thoughts about the day's work and learnings".to_string()),
-                    importance: Some(0.7),
-                    keywords: vec!["reflection".to_string(), "work".to_string()],
-                }),
-                inner: DocumentInner {
-                    title: "Daily Reflection - Nov 26".to_string(),
-                    cubes: vec![],
-                    links: vec![],
-                },
+            content: RawContent::Text(TextRaw {
+                content: "This is a note I copied from a website about Rust programming.".to_string(),
+                mime_type: Some("text/plain".to_string()),
+                language: Some("en".to_string()),
             }),
         },
-        Cube {
-            id: CubeId(Uuid::now_v7()),
-            pin: true,
-            content: CubeContent::Document(Document {
-                id: CubeId(Uuid::now_v7()),
-                created_at: Utc::now() - chrono::Duration::days(1),
-                updated_at: Utc::now() - chrono::Duration::hours(2),
-                vibe: None,
-                inner: DocumentInner {
-                    title: "Project Ideas".to_string(),
-                    cubes: vec![],
-                    links: vec![],
-                },
+        RawInner {
+            source: RawSource::FileWatcher {
+                original_path: std::path::PathBuf::from("/Users/me/Documents/notes.txt"),
+            },
+            content: RawContent::Text(TextRaw {
+                content: "A longer piece of text that was automatically collected from a watched folder. This demonstrates how the file watcher works.".to_string(),
+                mime_type: Some("text/plain".to_string()),
+                language: Some("en".to_string()),
             }),
         },
-        Cube {
-            id: CubeId(Uuid::now_v7()),
-            pin: false, // This one is not pinned, so it won't show
-            content: CubeContent::Document(Document {
-                id: CubeId(Uuid::now_v7()),
-                created_at: Utc::now() - chrono::Duration::hours(12),
-                updated_at: Utc::now() - chrono::Duration::minutes(30),
-                vibe: Some(Vibe {
-                    title: Some("Meeting Notes".to_string()),
-                    summary: Some("Discussion about the new feature implementation".to_string()),
-                    importance: Some(0.9),
-                    keywords: vec!["meeting".to_string(), "feature".to_string()],
-                }),
-                inner: DocumentInner {
-                    title: "Team Meeting - Nov 27".to_string(),
-                    cubes: vec![],
-                    links: vec![],
-                },
+        RawInner {
+            source: RawSource::Clipboard {
+                application: Some("VSCode".to_string()),
+            },
+            content: RawContent::Text(TextRaw {
+                content: "function hello() { console.log('Hello, world!'); }".to_string(),
+                mime_type: Some("text/plain".to_string()),
+                language: Some("javascript".to_string()),
             }),
         },
-        Cube {
-            id: CubeId(Uuid::now_v7()),
-            pin: true,
-            content: CubeContent::Heading(Heading {
-                level: 1,
-                text: RichText {
-                    segments: vec![RichTextSegment {
-                        text: "Important Heading".to_string(),
-                        marks: TextMarks::default(),
-                    }],
-                },
+        RawInner {
+            source: RawSource::ManualImport,
+            content: RawContent::Image(ImageRaw {
+                blob_id: BlobId(Uuid::now_v7()),
+                width: 1920,
+                height: 1080,
+                format: Some("png".to_string()),
+                thumbnail_blob_id: None,
+                dominant_color_rgb: Some([120, 150, 200]),
             }),
         },
     ]
