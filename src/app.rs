@@ -20,12 +20,12 @@ pub fn App() -> impl IntoView {
     // Create dummy raw entries
     let raw_entries = create_dummy_raw_entries();
 
-    // Create dummy documents
-    let documents = create_dummy_documents();
+    // Create dummy pinned cubes
+    let pinned_cubes = create_dummy_pinned_cubes();
 
     styled::view! { app_container_styles,
         <div class="app-container">
-            <GlacierPanel documents=documents />
+            <GlacierPanel cubes=pinned_cubes />
             <WorkspacePanel />
             <StreamPanel raw_entries=raw_entries />
         </div>
@@ -33,7 +33,7 @@ pub fn App() -> impl IntoView {
 }
 
 #[component]
-fn GlacierPanel(documents: Vec<Document>) -> impl IntoView {
+fn GlacierPanel(cubes: Vec<Cube>) -> impl IntoView {
     let panel_styles = style! {
         .panel {
             display: flex;
@@ -86,8 +86,8 @@ fn GlacierPanel(documents: Vec<Document>) -> impl IntoView {
                 <div class="panel-content">
                     {styled::view! { entries_list_styles,
                         <div class="entries-list">
-                            {documents.into_iter().map(|doc| {
-                                view! { <DocumentEntry document=doc /> }
+                            {cubes.into_iter().filter(|cube| cube.pin).map(|cube| {
+                                view! { <CubeEntry cube=cube /> }
                             }).collect::<Vec<_>>()}
                         </div>
                     }}
@@ -242,7 +242,7 @@ fn StreamPanel(raw_entries: Vec<RawEntry>) -> impl IntoView {
 }
 
 #[component]
-fn DocumentEntry(document: Document) -> impl IntoView {
+fn CubeEntry(cube: Cube) -> impl IntoView {
     let entry_item_styles = style! {
         .entry-item {
             padding: 0.75rem;
@@ -273,8 +273,45 @@ fn DocumentEntry(document: Document) -> impl IntoView {
         }
     };
 
-    let title = document.inner.title.clone();
-    let created = document.created_at.format("%Y-%m-%d %H:%M").to_string();
+    let (title, created_at) = match &cube.content {
+        CubeContent::Document(doc) => {
+            (doc.inner.title.clone(), doc.created_at)
+        }
+        CubeContent::PreOrder(po) => {
+            (format!("PreOrder"), po.created_at)
+        }
+        CubeContent::Order(order) => {
+            (format!("Order"), order.created_at)
+        }
+        CubeContent::Paragraph(_) => {
+            (format!("Paragraph"), chrono::Utc::now())
+        }
+        CubeContent::Heading(heading) => {
+            let text = heading.text.segments.iter()
+                .map(|s| s.text.clone())
+                .collect::<String>();
+            (if text.is_empty() { format!("Heading H{}", heading.level) } else { text }, chrono::Utc::now())
+        }
+        CubeContent::Todo(todo) => {
+            let text = todo.text.segments.iter()
+                .map(|s| s.text.clone())
+                .collect::<String>();
+            (if text.is_empty() { "Todo".to_string() } else { text }, chrono::Utc::now())
+        }
+        CubeContent::Quote(quote) => {
+            let text = quote.text.segments.iter()
+                .map(|s| s.text.clone())
+                .collect::<String>();
+            (if text.is_empty() { "Quote".to_string() } else { text }, chrono::Utc::now())
+        }
+        CubeContent::Image(_) => {
+            (format!("Image"), chrono::Utc::now())
+        }
+        CubeContent::RawReference(_) => {
+            (format!("Raw Reference"), chrono::Utc::now())
+        }
+    };
+    let created = created_at.format("%Y-%m-%d %H:%M").to_string();
     styled::view! { entry_item_styles,
         <div class="entry-item">
             {styled::view! { entry_title_styles,
@@ -498,50 +535,75 @@ fn create_dummy_raw_entries() -> Vec<RawEntry> {
     ]
 }
 
-fn create_dummy_documents() -> Vec<Document> {
+fn create_dummy_pinned_cubes() -> Vec<Cube> {
     vec![
-        Document {
+        Cube {
             id: CubeId(Uuid::now_v7()),
-            created_at: Utc::now() - chrono::Duration::days(2),
-            updated_at: Utc::now() - chrono::Duration::hours(5),
-            vibe: Some(Vibe {
-                title: Some("Daily Reflection".to_string()),
-                summary: Some("Thoughts about the day's work and learnings".to_string()),
-                importance: Some(0.7),
-                keywords: vec!["reflection".to_string(), "work".to_string()],
+            pin: true,
+            content: CubeContent::Document(Document {
+                id: CubeId(Uuid::now_v7()),
+                created_at: Utc::now() - chrono::Duration::days(2),
+                updated_at: Utc::now() - chrono::Duration::hours(5),
+                vibe: Some(Vibe {
+                    title: Some("Daily Reflection".to_string()),
+                    summary: Some("Thoughts about the day's work and learnings".to_string()),
+                    importance: Some(0.7),
+                    keywords: vec!["reflection".to_string(), "work".to_string()],
+                }),
+                inner: DocumentInner {
+                    title: "Daily Reflection - Nov 26".to_string(),
+                    cubes: vec![],
+                    links: vec![],
+                },
             }),
-            inner: DocumentInner {
-                title: "Daily Reflection - Nov 26".to_string(),
-                cubes: vec![],
-                links: vec![],
-            },
         },
-        Document {
+        Cube {
             id: CubeId(Uuid::now_v7()),
-            created_at: Utc::now() - chrono::Duration::days(1),
-            updated_at: Utc::now() - chrono::Duration::hours(2),
-            vibe: None,
-            inner: DocumentInner {
-                title: "Project Ideas".to_string(),
-                cubes: vec![],
-                links: vec![],
-            },
-        },
-        Document {
-            id: CubeId(Uuid::now_v7()),
-            created_at: Utc::now() - chrono::Duration::hours(12),
-            updated_at: Utc::now() - chrono::Duration::minutes(30),
-            vibe: Some(Vibe {
-                title: Some("Meeting Notes".to_string()),
-                summary: Some("Discussion about the new feature implementation".to_string()),
-                importance: Some(0.9),
-                keywords: vec!["meeting".to_string(), "feature".to_string()],
+            pin: true,
+            content: CubeContent::Document(Document {
+                id: CubeId(Uuid::now_v7()),
+                created_at: Utc::now() - chrono::Duration::days(1),
+                updated_at: Utc::now() - chrono::Duration::hours(2),
+                vibe: None,
+                inner: DocumentInner {
+                    title: "Project Ideas".to_string(),
+                    cubes: vec![],
+                    links: vec![],
+                },
             }),
-            inner: DocumentInner {
-                title: "Team Meeting - Nov 27".to_string(),
-                cubes: vec![],
-                links: vec![],
-            },
+        },
+        Cube {
+            id: CubeId(Uuid::now_v7()),
+            pin: false, // This one is not pinned, so it won't show
+            content: CubeContent::Document(Document {
+                id: CubeId(Uuid::now_v7()),
+                created_at: Utc::now() - chrono::Duration::hours(12),
+                updated_at: Utc::now() - chrono::Duration::minutes(30),
+                vibe: Some(Vibe {
+                    title: Some("Meeting Notes".to_string()),
+                    summary: Some("Discussion about the new feature implementation".to_string()),
+                    importance: Some(0.9),
+                    keywords: vec!["meeting".to_string(), "feature".to_string()],
+                }),
+                inner: DocumentInner {
+                    title: "Team Meeting - Nov 27".to_string(),
+                    cubes: vec![],
+                    links: vec![],
+                },
+            }),
+        },
+        Cube {
+            id: CubeId(Uuid::now_v7()),
+            pin: true,
+            content: CubeContent::Heading(Heading {
+                level: 1,
+                text: RichText {
+                    segments: vec![RichTextSegment {
+                        text: "Important Heading".to_string(),
+                        marks: TextMarks::default(),
+                    }],
+                },
+            }),
         },
     ]
 }
