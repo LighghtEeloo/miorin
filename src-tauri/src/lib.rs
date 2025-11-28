@@ -7,10 +7,71 @@ use db::*;
 use watcher::*;
 use settings::*;
 use blob::*;
+use tauri::AppHandle;
 
 #[tauri::command]
 fn toggle_devtools(window: tauri::WebviewWindow) {
     window.open_devtools();
+}
+
+/// Reveal the app data folder in the file manager
+#[tauri::command]
+async fn reveal_data_folder_cmd(app: AppHandle) -> Result<String, String> {
+    use tauri::Manager;
+    let app_dir = app.path().app_data_dir().map_err(|e| {
+        tracing::error!("Failed to get app data dir: {}", e);
+        format!("Failed to get app data dir: {}", e)
+    })?;
+    
+    // Ensure the directory exists
+    std::fs::create_dir_all(&app_dir).map_err(|e| {
+        tracing::error!("Failed to create app data dir: {}", e);
+        format!("Failed to create app data dir: {}", e)
+    })?;
+    
+    let path_str = app_dir.to_string_lossy().to_string();
+    
+    // Open the folder using platform-specific commands
+    #[cfg(target_os = "macos")]
+    {
+        use std::process::Command;
+        // Canonicalize the path to ensure it's absolute and properly formatted
+        let canonical_path = std::fs::canonicalize(&app_dir)
+            .map_err(|e| format!("Failed to canonicalize path: {}", e))?;
+        let canonical_str = canonical_path.to_string_lossy().to_string();
+        
+        tracing::info!(path = %canonical_str, "Opening folder in Finder");
+        
+        // Use -R flag to reveal the folder in Finder
+        let output = Command::new("/usr/bin/open")
+            .arg("-R")
+            .arg(&canonical_str)
+            .output()
+            .map_err(|e| format!("Failed to execute open command: {}", e))?;
+        
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            return Err(format!("Failed to open folder: {}", stderr));
+        }
+    }
+    #[cfg(target_os = "windows")]
+    {
+        use std::process::Command;
+        Command::new("explorer")
+            .arg(&path_str)
+            .spawn()
+            .map_err(|e| format!("Failed to open folder: {}", e))?;
+    }
+    #[cfg(target_os = "linux")]
+    {
+        use std::process::Command;
+        Command::new("xdg-open")
+            .arg(&path_str)
+            .spawn()
+            .map_err(|e| format!("Failed to open folder: {}", e))?;
+    }
+    
+    Ok(path_str)
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -63,6 +124,7 @@ pub fn run() {
             delete_blob_cmd,
             generate_thumbnail_cmd,
             get_all_store_data_cmd,
+            reveal_data_folder_cmd,
         ])
         .setup(|app| {
             // Start file watcher for configured path

@@ -1,7 +1,7 @@
 use crate::tauri_api;
 use leptos::prelude::*;
 use leptos_icons::Icon;
-use icondata::{LuDownload, LuEye, LuEyeOff, LuPlus, LuRefreshCw, LuTrash2, LuX};
+use icondata::{LuDownload, LuEye, LuEyeOff, LuFolderOpen, LuPlus, LuRefreshCw, LuTrash2, LuX};
 use styled::style;
 use wasm_bindgen_futures::spawn_local;
 use wasm_bindgen::JsCast;
@@ -740,6 +740,32 @@ pub fn Settings(
                                 >
                                     <Icon icon=LuRefreshCw width="16" height="16" />
                                     "Force Refresh"
+                                </button>
+                            }
+                        }}
+                        {move || {
+                            view! {
+                                <button
+                                    class="debug-button"
+                                    on:click=move |_| {
+                                        spawn_local(async move {
+                                            match tauri_api::reveal_data_folder().await {
+                                                | Ok(path) => {
+                                                    web_sys::console::log_1(
+                                                        &format!("Opened data folder: {}", path).into(),
+                                                    );
+                                                }
+                                                | Err(e) => {
+                                                    web_sys::console::error_1(
+                                                        &format!("Failed to open data folder: {}", e).into(),
+                                                    );
+                                                }
+                                            }
+                                        });
+                                    }
+                                >
+                                    <Icon icon=LuFolderOpen width="16" height="16" />
+                                    "Reveal Data Folder on Device"
                                 </button>
                             }
                         }}

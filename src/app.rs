@@ -3,7 +3,7 @@ use crate::card;
 use crate::tauri_api;
 use leptos::prelude::*;
 use leptos_icons::Icon;
-use icondata::LuSettings;
+use icondata::{LuPlus, LuSettings};
 use miorin_core::prelude::*;
 use styled::style;
 use wasm_bindgen_futures::spawn_local;
@@ -104,8 +104,49 @@ pub fn App() -> impl IntoView {
 
 #[component]
 fn GlacierPanel(cubes: RwSignal<Vec<Cube>>) -> impl IntoView {
+    let cubes_clone = cubes.clone();
+    let create_cube_action = move |_| {
+        let cubes_signal = cubes_clone.clone();
+        spawn_local(async move {
+            // Create a dummy paragraph cube
+            let dummy_paragraph = Paragraph {
+                text: RichText {
+                    segments: vec![RichTextSegment {
+                        text: "Dummy cube".to_string(),
+                        marks: TextMarks::default(),
+                    }],
+                },
+            };
+            
+            match tauri_api::create_cube(true, CubeContent::Paragraph(dummy_paragraph)).await {
+                | Ok(_) => {
+                    // Reload cubes
+                    match tauri_api::get_all_cubes().await {
+                        | Ok(cubes_data) => cubes_signal.set(cubes_data),
+                        | Err(e) => {
+                            web_sys::console::error_1(&format!("Failed to reload cubes: {}", e).into());
+                        }
+                    }
+                }
+                | Err(e) => {
+                    web_sys::console::error_1(&format!("Failed to create cube: {}", e).into());
+                }
+            }
+        });
+    };
+    
     view! {
-        <panel::Panel title="Glacier">
+        <panel::Panel 
+            title="Glacier"
+            header_actions=view! {
+                <button 
+                    style="padding: 6px; background: var(--color-primary, #007bff); color: white; border: none; border-radius: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; min-width: 28px; transition: background-color 0.2s;"
+                    on:click=create_cube_action
+                >
+                    <Icon icon=LuPlus width="16" height="16" />
+                </button>
+            }.into_any()
+        >
             <card::CardList items=move || {
                 let cubes_data = cubes.get();
                 cubes_data.into_iter()

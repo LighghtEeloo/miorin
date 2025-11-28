@@ -242,3 +242,8 @@ pub async fn generate_thumbnail(source_blob_id: String, max_size: u32) -> Result
 pub async fn get_all_store_data() -> Result<serde_json::Value, String> {
     invoke_tauri("get_all_store_data_cmd", serde_json::json!({})).await
 }
+
+/// Reveal the app data folder in the file manager
+pub async fn reveal_data_folder() -> Result<String, String> {
+    invoke_tauri("reveal_data_folder_cmd", serde_json::json!({})).await
+}
