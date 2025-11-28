@@ -6,6 +6,7 @@ edition = "2024"
 [dependencies]
 anyhow = "1.0.99"
 serde = { version = "1", features = ["derive"] }
-derive_more = {version = "2", features = ["from"]}
+derive_more = { version = "2", features = ["from"] }
 uuid = { workspace = true, features = ["v7", "serde"] }
 chrono = { workspace = true }
+daggy = { version = "0.9", features = ["serde-1"] }

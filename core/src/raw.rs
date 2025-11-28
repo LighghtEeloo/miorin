@@ -3,13 +3,21 @@
 use super::*;
 use crate::prelude::*;
 
+/// BlobId is a unique identifier for a binary blob (images, maybe large text).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct BlobId(pub Uuid);
+
 /// RawId is a unique identifier for a raw entry.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct RawId(pub Uuid);
 
-/// BlobId is a unique identifier for a binary blob (images, maybe large text).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct BlobId(pub Uuid);
+pub type RawEntry = Meta<RawId, RawEntryInner>;
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct RawEntryInner {
+    pub source: RawSource,
+    pub content: RawContent,
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum RawSource {
@@ -25,7 +33,7 @@ pub enum RawSource {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, From)]
-pub enum RawKind {
+pub enum RawContent {
     Text(TextRaw),
     Image(ImageRaw),
 }
@@ -51,12 +59,4 @@ pub struct ImageRaw {
     pub thumbnail_blob_id: Option<BlobId>,
     /// Optional UI sugar for color-coding.
     pub dominant_color_rgb: Option<[u8; 3]>,
-}
-
-pub type RawEntry = Meta<RawId, RawEntryInner>;
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct RawEntryInner {
-    pub source: RawSource,
-    pub kind: RawKind,
 }

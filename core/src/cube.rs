@@ -4,9 +4,39 @@ use crate::prelude::*;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct CubeId(pub Uuid);
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Cube {
+    pub id: CubeId,
+    /// Whether the cube is always shown in the short list.
+    pub pin: bool,
+    /// The content of the cube.
+    pub content: CubeContent,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum CubeContent {
+    Document(Document),
+    PreOrder(PreOrder),
+    Order(Order),
+    Paragraph(Paragraph),
+    Heading(Heading),
+    Todo(Todo),
+    Quote(Quote),
+    Image(Image),
+    RawReference(RawReference),
+    // You can grow this over time:
+    // Callout {
+    //     text: RichText,
+    // },
+    // Code {
+    //     language: Option<String>,
+    //     code: String,
+    // },
+}
+
 pub type Document = Meta<CubeId, DocumentInner>;
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DocumentInner {
     pub title: String,
     /// Flat list of cubes; use parent/index for structure.
@@ -16,60 +46,81 @@ pub struct DocumentInner {
     pub links: Vec<Link>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct PreOrderId(pub Uuid);
+
+pub type PreOrder = Meta<PreOrderId, PreOrderInner>;
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct Cube {
-    pub id: CubeId,
-    /// None = top-level.
-    pub parent: Option<CubeId>,
-    /// Order among siblings.
-    pub index: u32,
-    /// The type of cube.
-    pub kind: CubeKind,
+pub struct PreOrderEdge {
+    pub from: CubeId,
+    pub to: CubeId,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PreOrderInner {
+    pub dag: daggy::Dag<CubeId, PreOrderEdge>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct OrderId(pub Uuid);
+
+pub type Order = Meta<OrderId, OrderInner>;
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum OrderStyle {
+    /// Bulleted list, e.g. *, **, ***, ...
+    Bullet,
+    /// One-indexed, e.g. 1, 2, 3, ...
+    OneIndexed,
+    /// Zero-indexed, e.g. 0, 1, 2, ...
+    ZeroIndexed,
+    /// Latin, e.g. a, b, c, ...
+    Latin,
+    /// Greek, e.g. α, β, γ, ...
+    Greek,
+    /// Roman, e.g. I, II, III, ...
+    Roman,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OrderInner {
+    pub style: OrderStyle,
+    pub items: Vec<CubeId>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub enum CubeKind {
-    Document(Document),
-    Paragraph {
-        text: RichText,
-    },
-    Heading {
-        level: u8,
-        text: RichText,
-    },
-    Todo {
-        text: RichText,
-        done: bool,
-    },
-    Quote {
-        text: RichText,
-    },
-    BulletedListItem {
-        text: RichText,
-    },
-    NumberedListItem {
-        text: RichText,
-        number: Option<u32>,
-    },
+pub struct Paragraph {
+    pub text: RichText,
+}
 
-    Image {
-        blob_id: BlobId,
-        caption: Option<RichText>,
-        original_raw: Option<RawId>, // provenance
-    },
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Heading {
+    pub level: u8,
+    pub text: RichText,
+}
 
-    RawReference {
-        raw_id: RawId, // show as an embedded “card”
-    },
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Todo {
+    pub text: RichText,
+    pub done: bool,
+}
 
-    // You can grow this over time:
-    // Callout {
-    //     text: RichText,
-    // },
-    // Code {
-    //     language: Option<String>,
-    //     code: String,
-    // },
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Quote {
+    pub text: RichText,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Image {
+    pub blob_id: BlobId,
+    pub caption: Option<RichText>,
+    pub original_raw: Option<RawId>, // provenance
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct RawReference {
+    pub raw_id: RawId, // show as an embedded "card"
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

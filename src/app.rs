@@ -313,7 +313,7 @@ fn RawEntry(raw: RawEntry) -> impl IntoView {
 
     let source = format_raw_source(&raw.inner.source);
     let created = raw.created_at.format("%Y-%m-%d %H:%M").to_string();
-    let kind = raw.inner.kind.clone();
+    let kind = raw.inner.content.clone();
     styled::view! { entry_item_styles,
         <div class="entry-item raw-entry">
             <RawPreview kind=kind />
@@ -337,7 +337,7 @@ fn RawEntry(raw: RawEntry) -> impl IntoView {
 }
 
 #[component]
-fn RawPreview(kind: RawKind) -> impl IntoView {
+fn RawPreview(kind: RawContent) -> impl IntoView {
     let raw_preview_styles = style! {
         .raw-preview {
             display: flex;
@@ -350,7 +350,7 @@ fn RawPreview(kind: RawKind) -> impl IntoView {
     styled::view! { raw_preview_styles,
         <div class="raw-preview">
             {match &kind {
-                RawKind::Text(text) => {
+                RawContent::Text(text) => {
                     let preview_text = if text.content.len() > 50 {
                         format!("{}...", &text.content[..50])
                     } else {
@@ -380,7 +380,7 @@ fn RawPreview(kind: RawKind) -> impl IntoView {
                         </>
                     }
                 }
-                RawKind::Image(img) => {
+                RawContent::Image(img) => {
                     let raw_icon_styles3 = style! {
                         .raw-icon {
                             font-size: 1.25rem;
@@ -439,7 +439,7 @@ fn create_dummy_raw_entries() -> Vec<RawEntry> {
                 source: RawSource::Clipboard {
                     application: Some("Chrome".to_string()),
                 },
-                kind: RawKind::Text(TextRaw {
+                content: RawContent::Text(TextRaw {
                     content: "This is a note I copied from a website about Rust programming.".to_string(),
                     mime_type: Some("text/plain".to_string()),
                     language: Some("en".to_string()),
@@ -455,7 +455,7 @@ fn create_dummy_raw_entries() -> Vec<RawEntry> {
                 source: RawSource::FileWatcher {
                     original_path: std::path::PathBuf::from("/Users/me/Documents/notes.txt"),
                 },
-                kind: RawKind::Text(TextRaw {
+                content: RawContent::Text(TextRaw {
                     content: "A longer piece of text that was automatically collected from a watched folder. This demonstrates how the file watcher works.".to_string(),
                     mime_type: Some("text/plain".to_string()),
                     language: Some("en".to_string()),
@@ -471,7 +471,7 @@ fn create_dummy_raw_entries() -> Vec<RawEntry> {
                 source: RawSource::Clipboard {
                     application: Some("VSCode".to_string()),
                 },
-                kind: RawKind::Text(TextRaw {
+                content: RawContent::Text(TextRaw {
                     content: "function hello() { console.log('Hello, world!'); }".to_string(),
                     mime_type: Some("text/plain".to_string()),
                     language: Some("javascript".to_string()),
@@ -485,7 +485,7 @@ fn create_dummy_raw_entries() -> Vec<RawEntry> {
             vibe: None,
             inner: RawEntryInner {
                 source: RawSource::ManualImport,
-                kind: RawKind::Image(ImageRaw {
+                content: RawContent::Image(ImageRaw {
                     blob_id: BlobId(Uuid::now_v7()),
                     width: 1920,
                     height: 1080,
