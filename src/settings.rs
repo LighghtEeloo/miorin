@@ -6,64 +6,61 @@ use styled::style;
 use wasm_bindgen_futures::spawn_local;
 use wasm_bindgen::JsCast;
 
+
 #[component]
-pub fn Settings(close_settings: impl Fn() + 'static) -> impl IntoView {
-    let container_styles = style! {
-        .settings-wrapper {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            width: 100%;
-            height: 100vh;
-            overflow-y: auto;
-            background-color: var(--color-bg);
-            z-index: 1000;
+fn WatchPathItem(
+    config: tauri_api::WatchPathConfig,
+    on_toggle: impl Fn(String, bool) + 'static,
+    on_remove: impl Fn(String) + 'static,
+    on_import: impl Fn(String) + 'static,
+) -> impl IntoView {
+    let path_item_styles = style! {
+        .path-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px;
+            margin-bottom: 8px;
+            background-color: var(--color-bg-secondary, #f8f9fa);
+            border-radius: 4px;
+            border: 1px solid var(--color-border, #dee2e6);
         }
-        .settings-container {
-            padding: 60px 20px 20px 20px;
-            max-width: 800px;
-            margin: 0 auto;
-            background-color: var(--color-bg);
-            color: var(--color-text);
-            font-family: system-ui, -apple-system, sans-serif;
-        }
-        .section {
-            margin-bottom: 30px;
-        }
-        .section-title {
-            font-size: 18px;
-            font-weight: 600;
-            margin-bottom: 15px;
-            color: var(--color-text);
-        }
-        .section-description {
-            margin-bottom: 15px;
+        .path-text {
+            flex: 1;
+            margin-right: 10px;
+            word-break: break-all;
             color: var(--color-text-secondary, #6c757d);
+            font-family: monospace;
             font-size: 13px;
         }
-        .form-group {
-            margin-bottom: 15px;
-        }
-        .form-label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: 500;
-            color: var(--color-text);
-        }
-        .form-control {
-            width: 100%;
-            padding: 8px 12px;
-            border: 1px solid var(--color-border, #ccc);
+        .button {
+            padding: 8px 16px;
+            border: none;
             border-radius: 4px;
-            background-color: var(--color-bg);
-            color: var(--color-text);
+            cursor: pointer;
             font-size: 14px;
+            font-weight: 500;
+            transition: background-color 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
         }
-        .form-control:focus {
-            outline: none;
-            border-color: var(--color-primary, #007bff);
+        .button-danger {
+            background-color: var(--color-danger, #dc3545);
+            color: white;
+            padding: 8px;
+        }
+        .button-danger:hover {
+            background-color: var(--color-danger-hover, #c82333);
+        }
+        .button-import {
+            background-color: var(--color-primary, #007bff);
+            color: white;
+            padding: 8px;
+        }
+        .button-import:hover {
+            background-color: var(--color-primary-hover, #0056b3);
         }
         .toggle-group {
             display: flex;
@@ -112,6 +109,147 @@ pub fn Settings(close_settings: impl Fn() + 'static) -> impl IntoView {
         .toggle-switch input:focus + .toggle-slider {
             box-shadow: 0 0 1px var(--color-primary, #007bff);
         }
+    };
+
+    let path = config.path.clone();
+    let enabled = config.enabled;
+    let path_for_toggle = path.clone();
+    let path_for_remove = path.clone();
+    let path_for_import = path.clone();
+
+    styled::view! { path_item_styles,
+        <li class="path-item">
+                <div class="toggle-group" style="flex: 1; margin-right: 10px;">
+                    <label class="toggle-switch">
+                        <input
+                            type="checkbox"
+                            checked=enabled
+                            on:change=move |_| on_toggle(path_for_toggle.clone(), !enabled)
+                        />
+                        <span class="toggle-slider"></span>
+                    </label>
+                    <span class="path-text">{path}</span>
+                </div>
+                <div style="display: flex; gap: 8px;">
+                    <button
+                        class="button button-import"
+                        on:click=move |_| on_import(path_for_import.clone())
+                    >
+                        <Icon icon=LuDownload width="16" height="16" />
+                    </button>
+                    <button
+                        class="button button-danger"
+                        on:click=move |_| on_remove(path_for_remove.clone())
+                    >
+                        <Icon icon=LuTrash2 width="16" height="16" />
+                    </button>
+                </div>
+        </li>
+    }
+}
+
+#[component]
+fn ProgressOrError(
+    importing_path: Option<String>,
+    error_message: Option<String>,
+) -> impl IntoView {
+    let progress_styles = style! {
+        .progress-container {
+            margin-top: 8px;
+            padding: 8px 12px;
+            background-color: var(--color-bg-secondary, #f8f9fa);
+            border: 1px solid var(--color-border, #dee2e6);
+            border-radius: 4px;
+        }
+        .progress-bar-container {
+            width: 100%;
+            height: 8px;
+            background-color: var(--color-border, #dee2e6);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 8px;
+            position: relative;
+        }
+        .progress-bar {
+            height: 100%;
+            width: 100%;
+            background-color: var(--color-primary, #007bff);
+            border-radius: 4px;
+            opacity: 0.8;
+        }
+        .progress-text {
+            font-size: 13px;
+            color: var(--color-text-secondary, #6c757d);
+            margin-bottom: 4px;
+        }
+        .error-message {
+            margin-top: 8px;
+            padding: 8px 12px;
+            background-color: var(--color-error-bg, #fee);
+            color: var(--color-error-text, #c33);
+            border: 1px solid var(--color-error-border, #fcc);
+            border-radius: 4px;
+            font-size: 13px;
+        }
+    };
+
+    if let Some(path) = importing_path {
+        styled::view! { progress_styles,
+            <div class="progress-container">
+                <div class="progress-text">
+                    {format!("Importing files from {}...", path)}
+                </div>
+                <div class="progress-bar-container">
+                    <div class="progress-bar" style="width: 100%; animation: pulse 1.5s ease-in-out infinite;"></div>
+                </div>
+                <style>
+                    {r#"
+                    @keyframes pulse {
+                        0%, 100% { opacity: 0.6; }
+                        50% { opacity: 1; }
+                    }
+                    "#}
+                </style>
+            </div>
+        }.into_any()
+    } else if let Some(msg) = error_message {
+        styled::view! { progress_styles,
+            <div class="error-message">
+                {msg}
+            </div>
+        }.into_any()
+    } else {
+        view! {}.into_any()
+    }
+}
+
+#[component]
+fn AddPathInput(
+    new_path: RwSignal<String>,
+    on_add: impl Fn() + Clone + 'static,
+) -> impl IntoView {
+    let add_path_styles = style! {
+        .add-path-group {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        .add-path-input {
+            flex: 1;
+        }
+        .form-control {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid var(--color-border, #ccc);
+            border-radius: 4px;
+            background-color: var(--color-bg);
+            color: var(--color-text);
+            font-size: 14px;
+        }
+        .form-control:focus {
+            outline: none;
+            border-color: var(--color-primary, #007bff);
+        }
         .button {
             padding: 8px 16px;
             border: none;
@@ -141,96 +279,112 @@ pub fn Settings(close_settings: impl Fn() + 'static) -> impl IntoView {
             height: 32px;
             min-width: 32px;
         }
-        .button-danger {
-            background-color: var(--color-danger, #dc3545);
-            color: white;
+    };
+
+    styled::view! { add_path_styles,
+        <div class="add-path-group">
+                <input
+                    type="text"
+                    class="form-control add-path-input"
+                    placeholder="Enter path to watch (e.g., ~/Downloads/Pic)"
+                    prop:value=move || new_path.get()
+                    on:input=move |ev| {
+                        if let Some(target) = ev.target() {
+                            if let Ok(input) = target.dyn_into::<web_sys::HtmlInputElement>() {
+                                new_path.set(input.value());
+                            }
+                        }
+                    }
+                    on:keypress={
+                        let on_add_clone = on_add.clone();
+                        move |ev| {
+                            if ev.key_code() == 13 {
+                                on_add_clone();
+                            }
+                        }
+                    }
+                />
+                <button class="button button-primary button-icon-only" on:click=move |_| on_add()>
+                    <Icon icon=LuPlus width="16" height="16" />
+                </button>
+        </div>
+    }
+}
+
+#[component]
+fn CloseButton(close_settings: impl Fn() + 'static) -> impl IntoView {
+    let close_button_styles = style! {
+        .close-button {
+            position: fixed;
+            top: 20px;
+            left: 20px;
             padding: 8px;
-        }
-        .button-danger:hover {
-            background-color: var(--color-danger-hover, #c82333);
-        }
-        .button-import {
-            background-color: var(--color-primary, #007bff);
-            color: white;
-            padding: 8px;
-        }
-        .button-import:hover {
-            background-color: var(--color-primary-hover, #0056b3);
-        }
-        .button-secondary {
             background-color: var(--color-secondary, #6c757d);
             color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: background-color 0.2s;
+            z-index: 1001;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
-        .button-secondary:hover {
+        .close-button:hover {
             background-color: var(--color-secondary-hover, #5a6268);
+        }
+    };
+
+    styled::view! { close_button_styles,
+        <button class="close-button" on:click=move |_| close_settings()>
+            <Icon icon=LuX width="20" height="20" />
+        </button>
+    }
+}
+
+#[component]
+pub fn Settings(close_settings: impl Fn() + 'static) -> impl IntoView {
+    let container_styles = style! {
+        .settings-wrapper {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            width: 100%;
+            height: 100vh;
+            overflow-y: auto;
+            background-color: var(--color-bg);
+            z-index: 1000;
+        }
+        .settings-container {
+            padding: 60px 20px 20px 20px;
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: var(--color-bg);
+            color: var(--color-text);
+            font-family: system-ui, -apple-system, sans-serif;
+        }
+        .section {
+            margin-bottom: 30px;
+        }
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: var(--color-text);
+        }
+        .section-description {
+            margin-bottom: 15px;
+            color: var(--color-text-secondary, #6c757d);
+            font-size: 13px;
         }
         .path-list {
             list-style: none;
             padding: 0;
             margin: 0;
-        }
-        .path-item {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 10px;
-            margin-bottom: 8px;
-            background-color: var(--color-bg-secondary, #f8f9fa);
-            border-radius: 4px;
-            border: 1px solid var(--color-border, #dee2e6);
-        }
-        .path-text {
-            flex: 1;
-            margin-right: 10px;
-            word-break: break-all;
-            color: var(--color-text-secondary, #6c757d);
-            font-family: monospace;
-            font-size: 13px;
-        }
-        .add-path-group {
-            display: flex;
-            gap: 8px;
-            margin-top: 10px;
-        }
-        .add-path-input {
-            flex: 1;
-        }
-        .error-message {
-            margin-top: 8px;
-            padding: 8px 12px;
-            background-color: var(--color-error-bg, #fee);
-            color: var(--color-error-text, #c33);
-            border: 1px solid var(--color-error-border, #fcc);
-            border-radius: 4px;
-            font-size: 13px;
-        }
-        .progress-container {
-            margin-top: 8px;
-            padding: 8px 12px;
-            background-color: var(--color-bg-secondary, #f8f9fa);
-            border: 1px solid var(--color-border, #dee2e6);
-            border-radius: 4px;
-        }
-        .progress-bar-container {
-            width: 100%;
-            height: 8px;
-            background-color: var(--color-border, #dee2e6);
-            border-radius: 4px;
-            overflow: hidden;
-            margin-top: 8px;
-            position: relative;
-        }
-        .progress-bar {
-            height: 100%;
-            width: 100%;
-            background-color: var(--color-primary, #007bff);
-            border-radius: 4px;
-            opacity: 0.8;
-        }
-        .progress-text {
-            font-size: 13px;
-            color: var(--color-text-secondary, #6c757d);
-            margin-bottom: 4px;
         }
     };
 
@@ -401,37 +555,9 @@ pub fn Settings(close_settings: impl Fn() + 'static) -> impl IntoView {
         }
     };
 
-    let close_button_styles = style! {
-        .close-button {
-            position: fixed;
-            top: 20px;
-            left: 20px;
-            padding: 8px;
-            background-color: var(--color-secondary, #6c757d);
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: 500;
-            transition: background-color 0.2s;
-            z-index: 1001;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .close-button:hover {
-            background-color: var(--color-secondary-hover, #5a6268);
-        }
-    };
-
     styled::view! { container_styles,
         <div class="settings-wrapper">
-            {styled::view! { close_button_styles,
-                <button class="close-button" on:click=move |_| close_settings()>
-                    <Icon icon=LuX width="20" height="20" />
-                </button>
-            }}
+            <CloseButton close_settings=close_settings />
             <div class="settings-container">
                 <div class="section">
                     <h2 class="section-title">Watch Paths</h2>
@@ -445,96 +571,25 @@ pub fn Settings(close_settings: impl Fn() + 'static) -> impl IntoView {
                             each=move || watch_paths.get()
                             key=|config| config.path.clone()
                             children=move |config: tauri_api::WatchPathConfig| {
-                                let path = config.path.clone();
-                                let enabled = config.enabled;
-                                let path_for_toggle = path.clone();
-                                let path_for_remove = path.clone();
-                                let path_for_import = path.clone();
                                 view! {
-                                    <li class="path-item">
-                                        <div class="toggle-group" style="flex: 1; margin-right: 10px;">
-                                            <label class="toggle-switch">
-                                                <input
-                                                    type="checkbox"
-                                                    checked=enabled
-                                                    on:change=move |_| toggle_path_enabled(path_for_toggle.clone(), !enabled)
-                                                />
-                                                <span class="toggle-slider"></span>
-                                            </label>
-                                            <span class="path-text">{path}</span>
-                                        </div>
-                                        <div style="display: flex; gap: 8px;">
-                                            <button
-                                                class="button button-import"
-                                                on:click=move |_| import_files(path_for_import.clone())
-                                            >
-                                                <Icon icon=LuDownload width="16" height="16" />
-                                            </button>
-                                            <button
-                                                class="button button-danger"
-                                                on:click=move |_| remove_path(path_for_remove.clone())
-                                            >
-                                                <Icon icon=LuTrash2 width="16" height="16" />
-                                            </button>
-                                        </div>
-                                    </li>
+                                    <WatchPathItem
+                                        config=config.clone()
+                                        on_toggle=toggle_path_enabled.clone()
+                                        on_remove=remove_path.clone()
+                                        on_import=import_files.clone()
+                                    />
                                 }
                             }
                         />
                     </ul>
-                    <div class="add-path-group">
-                        <input
-                            type="text"
-                            class="form-control add-path-input"
-                            placeholder="Enter path to watch (e.g., ~/Downloads/Pic)"
-                            prop:value=move || new_path.get()
-                            on:input=move |ev| {
-                                if let Some(target) = ev.target() {
-                                    if let Ok(input) = target.dyn_into::<web_sys::HtmlInputElement>() {
-                                        new_path.set(input.value());
-                                    }
-                                }
-                            }
-                            on:keypress=move |ev| {
-                                if ev.key_code() == 13 {
-                                    add_path();
-                                }
-                            }
-                        />
-                        <button class="button button-primary button-icon-only" on:click=move |_| add_path()>
-                            <Icon icon=LuPlus width="16" height="16" />
-                        </button>
-                    </div>
+                    <AddPathInput new_path=new_path on_add=add_path.clone() />
                     {move || {
-                        let importing = importing_path.get();
-                        if let Some(path) = importing {
-                            view! {
-                                <div class="progress-container">
-                                    <div class="progress-text">
-                                        {format!("Importing files from {}...", path)}
-                                    </div>
-                                    <div class="progress-bar-container">
-                                        <div class="progress-bar" style="width: 100%; animation: pulse 1.5s ease-in-out infinite;"></div>
-                                    </div>
-                                    <style>
-                                        {r#"
-                                        @keyframes pulse {
-                                            0%, 100% { opacity: 0.6; }
-                                            50% { opacity: 1; }
-                                        }
-                                        "#}
-                                    </style>
-                                </div>
-                            }.into_any()
-                        } else {
-                            error_message.get().map(|msg| {
-                                view! {
-                                    <div class="error-message">
-                                        {msg}
-                                    </div>
-                                }.into_any()
-                            }).unwrap_or_else(|| view! {}.into_any())
-                        }
+                        view! {
+                            <ProgressOrError
+                                importing_path=importing_path.get()
+                                error_message=error_message.get()
+                            />
+                        }.into_any()
                     }}
                 </div>
             </div>
