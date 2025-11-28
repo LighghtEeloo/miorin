@@ -1,97 +1,56 @@
-.logo.leptos:hover {
-  filter: drop-shadow(0 0 2em #a82e20);
-}
+/* ============================================
+   CSS Variables
+   ============================================ */
 :root {
+  /* Typography */
   font-family: Inter, Avenir, Helvetica, Arial, sans-serif;
   font-size: 16px;
   line-height: 24px;
   font-weight: 400;
-
-  color: #0f0f0f;
-  background-color: #f6f6f6;
-
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   -webkit-text-size-adjust: 100%;
+
+  /* Colors - Light Mode */
+  --color-text: #0f0f0f;
+  --color-text-secondary: #666;
+  --color-text-muted: #999;
+  --color-bg: #f6f6f6;
+  --color-panel-bg: #ffffff;
+  --color-panel-header-bg: #f8f8f8;
+  --color-workspace-bg: #fafafa;
+  --color-border: #e0e0e0;
+  --color-hover: #f5f5f5;
 }
 
-.container {
-  margin: 0;
-  padding-top: 10vh;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  text-align: center;
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* Colors - Dark Mode */
+    --color-text: #f6f6f6;
+    --color-text-secondary: #999;
+    --color-text-muted: #666;
+    --color-bg: #2f2f2f;
+    --color-panel-bg: #1e1e1e;
+    --color-panel-header-bg: #252525;
+    --color-workspace-bg: #1a1a1a;
+    --color-border: #3a3a3a;
+    --color-hover: #2a2a2a;
+  }
 }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: 0.75s;
+/* ============================================
+   Base Styles
+   ============================================ */
+:root {
+  color: var(--color-text);
+  background-color: var(--color-bg);
 }
 
-.logo.tauri:hover {
-  filter: drop-shadow(0 0 2em #24c8db);
-}
-
-.row {
-  display: flex;
-  justify-content: center;
-}
-
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-
-a:hover {
-  color: #535bf2;
-}
-
-h1 {
-  text-align: center;
-}
-
-input,
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  color: #0f0f0f;
-  background-color: #ffffff;
-  transition: border-color 0.25s;
-  box-shadow: 0 2px 2px rgba(0, 0, 0, 0.2);
-}
-
-button {
-  cursor: pointer;
-}
-
-button:hover {
-  border-color: #396cd8;
-}
-button:active {
-  border-color: #396cd8;
-  background-color: #e8e8e8;
-}
-
-input,
-button {
-  outline: none;
-}
-
-#greet-input {
-  margin-right: 5px;
-}
-
-/* Three-panel layout */
+/* ============================================
+   Three-Panel Layout
+   ============================================ */
 .app-container {
   display: grid;
   grid-template-columns: 250px 1fr 300px;
@@ -102,8 +61,8 @@ button {
 .panel {
   display: flex;
   flex-direction: column;
-  border-right: 1px solid #e0e0e0;
-  background-color: #ffffff;
+  border-right: 1px solid var(--color-border);
+  background-color: var(--color-panel-bg);
   overflow: hidden;
 }
 
@@ -113,15 +72,15 @@ button {
 
 .panel-header {
   padding: 1rem;
-  border-bottom: 1px solid #e0e0e0;
-  background-color: #f8f8f8;
+  border-bottom: 1px solid var(--color-border);
+  background-color: var(--color-panel-header-bg);
 }
 
 .panel-header h2 {
   margin: 0;
   font-size: 1rem;
   font-weight: 600;
-  color: #333;
+  color: var(--color-text);
 }
 
 .panel-content {
@@ -130,6 +89,9 @@ button {
   padding: 0.5rem;
 }
 
+/* ============================================
+   Glacier Panel (Documents)
+   ============================================ */
 .entries-list {
   display: flex;
   flex-direction: column;
@@ -138,29 +100,32 @@ button {
 
 .entry-item {
   padding: 0.75rem;
-  border: 1px solid #e0e0e0;
+  border: 1px solid var(--color-border);
   border-radius: 4px;
-  background-color: #ffffff;
+  background-color: var(--color-panel-bg);
   cursor: pointer;
   transition: background-color 0.2s;
 }
 
 .entry-item:hover {
-  background-color: #f5f5f5;
+  background-color: var(--color-hover);
 }
 
 .entry-title {
   font-weight: 500;
-  color: #333;
+  color: var(--color-text);
   margin-bottom: 0.25rem;
 }
 
 .entry-meta {
   font-size: 0.75rem;
-  color: #666;
+  color: var(--color-text-secondary);
   margin-top: 0.25rem;
 }
 
+/* ============================================
+   Stream Panel (Raw Entries)
+   ============================================ */
 .raw-entry {
   display: flex;
   flex-direction: column;
@@ -180,12 +145,15 @@ button {
 .raw-content {
   flex: 1;
   font-size: 0.875rem;
-  color: #555;
+  color: var(--color-text-secondary);
   word-break: break-word;
 }
 
+/* ============================================
+   Workspace Panel
+   ============================================ */
 .workspace-panel {
-  background-color: #fafafa;
+  background-color: var(--color-workspace-bg);
 }
 
 .workspace-editor {
@@ -194,71 +162,8 @@ button {
 }
 
 .placeholder-text {
-  color: #999;
+  color: var(--color-text-muted);
   font-style: italic;
   text-align: center;
   margin-top: 3rem;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    color: #f6f6f6;
-    background-color: #2f2f2f;
-  }
-
-  a:hover {
-    color: #24c8db;
-  }
-
-  input,
-  button {
-    color: #ffffff;
-    background-color: #0f0f0f98;
-  }
-  button:active {
-    background-color: #0f0f0f69;
-  }
-
-  .panel {
-    background-color: #1e1e1e;
-    border-right-color: #3a3a3a;
-  }
-
-  .panel-header {
-    background-color: #252525;
-    border-bottom-color: #3a3a3a;
-  }
-
-  .panel-header h2 {
-    color: #f6f6f6;
-  }
-
-  .entry-item {
-    background-color: #252525;
-    border-color: #3a3a3a;
-  }
-
-  .entry-item:hover {
-    background-color: #2a2a2a;
-  }
-
-  .entry-title {
-    color: #f6f6f6;
-  }
-
-  .entry-meta {
-    color: #999;
-  }
-
-  .raw-content {
-    color: #ccc;
-  }
-
-  .workspace-panel {
-    background-color: #1a1a1a;
-  }
-
-  .placeholder-text {
-    color: #666;
-  }
 }
