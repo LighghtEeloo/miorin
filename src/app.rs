@@ -42,57 +42,7 @@ pub fn App() -> impl IntoView {
                 web_sys::console::log_1(
                     &format!("Successfully loaded {} raw entries", entries.len()).into(),
                 );
-                if entries.is_empty() {
-                    web_sys::console::log_1(
-                        &"Database is empty, creating dummy raw entries...".into(),
-                    );
-                    // Seed with dummy data if database is empty
-                    let dummy_entries = create_dummy_raw_entries();
-                    let dummy_count = dummy_entries.len();
-                    web_sys::console::log_1(
-                        &format!("Created {} dummy entry definitions", dummy_count).into(),
-                    );
-                    let mut created_entries = Vec::new();
-                    for (index, inner) in dummy_entries.into_iter().enumerate() {
-                        web_sys::console::log_1(
-                            &format!("Creating dummy entry {} of {}", index + 1, dummy_count)
-                                .into(),
-                        );
-                        match tauri_api::create_raw_entry(inner).await {
-                            | Ok(raw) => {
-                                web_sys::console::log_1(
-                                    &format!(
-                                        "Successfully created raw entry with id: {}",
-                                        raw.id.0
-                                    )
-                                    .into(),
-                                );
-                                created_entries.push(raw);
-                            }
-                            | Err(e) => {
-                                web_sys::console::error_1(
-                                    &format!(
-                                        "Failed to create dummy raw entry {}: {}",
-                                        index + 1,
-                                        e
-                                    )
-                                    .into(),
-                                );
-                            }
-                        }
-                    }
-                    web_sys::console::log_1(
-                        &format!("Setting {} created entries to signal", created_entries.len())
-                            .into(),
-                    );
-                    raw_entries_clone.set(created_entries);
-                } else {
-                    web_sys::console::log_1(
-                        &format!("Database has {} entries, using existing data", entries.len())
-                            .into(),
-                    );
-                    raw_entries_clone.set(entries);
-                }
+                raw_entries_clone.set(entries);
             }
             | Err(e) => {
                 web_sys::console::error_1(&format!("Failed to load raw entries: {}", e).into());
@@ -135,7 +85,10 @@ pub fn App() -> impl IntoView {
         {move || {
             if show_settings.get() {
                 view! {
-                    <crate::settings::Settings close_settings=close_settings.clone() />
+                    <crate::settings::Settings 
+                        close_settings=close_settings.clone() 
+                        raw_entries_signal=raw_entries.clone()
+                    />
                 }.into_any()
             } else {
                 view! {
@@ -595,51 +548,3 @@ fn format_raw_source(source: &RawSource) -> String {
     }
 }
 
-/// Create dummy raw entries for seeding the database
-fn create_dummy_raw_entries() -> Vec<RawInner> {
-    use uuid::Uuid;
-
-    vec![
-        RawInner {
-            source: RawSource::Clipboard {
-                application: Some("Chrome".to_string()),
-            },
-            content: RawContent::Text(TextRaw {
-                content: "This is a note I copied from a website about Rust programming.".to_string(),
-                mime_type: Some("text/plain".to_string()),
-                language: Some("en".to_string()),
-            }),
-        },
-        RawInner {
-            source: RawSource::FileWatcher {
-                original_path: std::path::PathBuf::from("/Users/me/Documents/notes.txt"),
-            },
-            content: RawContent::Text(TextRaw {
-                content: "A longer piece of text that was automatically collected from a watched folder. This demonstrates how the file watcher works.".to_string(),
-                mime_type: Some("text/plain".to_string()),
-                language: Some("en".to_string()),
-            }),
-        },
-        RawInner {
-            source: RawSource::Clipboard {
-                application: Some("VSCode".to_string()),
-            },
-            content: RawContent::Text(TextRaw {
-                content: "function hello() { console.log('Hello, world!'); }".to_string(),
-                mime_type: Some("text/plain".to_string()),
-                language: Some("javascript".to_string()),
-            }),
-        },
-        RawInner {
-            source: RawSource::ManualImport,
-            content: RawContent::Image(ImageRaw {
-                blob_id: BlobId(Uuid::now_v7()),
-                width: 1920,
-                height: 1080,
-                format: Some("png".to_string()),
-                thumbnail_blob_id: None,
-                dominant_color_rgb: Some([120, 150, 200]),
-            }),
-        },
-    ]
-}

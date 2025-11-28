@@ -345,7 +345,10 @@ fn CloseButton(close_settings: impl Fn() + 'static) -> impl IntoView {
 }
 
 #[component]
-pub fn Settings(close_settings: impl Fn() + 'static) -> impl IntoView {
+pub fn Settings(
+    close_settings: impl Fn() + 'static,
+    raw_entries_signal: RwSignal<Vec<miorin_core::prelude::Raw>>,
+) -> impl IntoView {
     let container_styles = style! {
         .settings-wrapper {
             position: fixed;
@@ -554,9 +557,11 @@ pub fn Settings(close_settings: impl Fn() + 'static) -> impl IntoView {
     let import_files = {
         let importing_path_clone = importing_path.clone();
         let error_message_clone = error_message.clone();
+        let raw_entries_signal_clone = raw_entries_signal.clone();
         move |path: String| {
             let importing_path_inner = importing_path_clone.clone();
             let error_message_inner = error_message_clone.clone();
+            let raw_entries_signal_inner = raw_entries_signal_clone.clone();
             spawn_local(async move {
                 error_message_inner.set(None);
                 importing_path_inner.set(Some(path.clone()));
@@ -568,6 +573,18 @@ pub fn Settings(close_settings: impl Fn() + 'static) -> impl IntoView {
                         importing_path_inner.set(None);
                         if count > 0 {
                             error_message_inner.set(Some(format!("Successfully imported {} files", count)));
+                            // Refresh raw entries to show newly imported files
+                            match tauri_api::get_all_raw_entries().await {
+                                | Ok(entries) => {
+                                    web_sys::console::log_1(
+                                        &format!("Successfully refreshed {} raw entries", entries.len()).into(),
+                                    );
+                                    raw_entries_signal_inner.set(entries);
+                                }
+                                | Err(e) => {
+                                    web_sys::console::error_1(&format!("Failed to refresh raw entries: {}", e).into());
+                                }
+                            }
                         } else {
                             error_message_inner.set(Some("No files found to import".to_string()));
                         }
