@@ -4,16 +4,16 @@
   "version": "0.1.0",
   "identifier": "com.miorin.app",
   "build": {
-    "beforeDevCommand": "dx serve --port 1420",
+    "beforeDevCommand": "trunk serve",
     "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "dx build --release",
+    "beforeBuildCommand": "trunk build",
     "frontendDist": "../dist"
   },
   "app": {
     "withGlobalTauri": true,
     "windows": [
       {
-        "title": "miorin",
+        "title": "Ciallo～(∠・ω< )⌒★",
         "width": 800,
         "height": 600
       }
