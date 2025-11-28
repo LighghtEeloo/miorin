@@ -1,5 +1,7 @@
 use crate::tauri_api;
 use leptos::prelude::*;
+use leptos_icons::Icon;
+use icondata::{LuPlus, LuTrash2, LuX};
 use styled::style;
 use wasm_bindgen_futures::spawn_local;
 use wasm_bindgen::JsCast;
@@ -118,6 +120,10 @@ pub fn Settings(close_settings: impl Fn() + 'static) -> impl IntoView {
             font-size: 14px;
             font-weight: 500;
             transition: background-color 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
         }
         .button-primary {
             background-color: var(--color-primary, #007bff);
@@ -126,9 +132,19 @@ pub fn Settings(close_settings: impl Fn() + 'static) -> impl IntoView {
         .button-primary:hover {
             background-color: var(--color-primary-hover, #0056b3);
         }
+        .button-icon-only {
+            padding: 8px;
+        }
+        .button-primary.button-icon-only {
+            padding: 8px;
+            width: 32px;
+            height: 32px;
+            min-width: 32px;
+        }
         .button-danger {
             background-color: var(--color-danger, #dc3545);
             color: white;
+            padding: 8px;
         }
         .button-danger:hover {
             background-color: var(--color-danger-hover, #c82333);
@@ -317,7 +333,7 @@ pub fn Settings(close_settings: impl Fn() + 'static) -> impl IntoView {
             position: fixed;
             top: 20px;
             left: 20px;
-            padding: 8px 16px;
+            padding: 8px;
             background-color: var(--color-secondary, #6c757d);
             color: white;
             border: none;
@@ -327,6 +343,9 @@ pub fn Settings(close_settings: impl Fn() + 'static) -> impl IntoView {
             font-weight: 500;
             transition: background-color 0.2s;
             z-index: 1001;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         .close-button:hover {
             background-color: var(--color-secondary-hover, #5a6268);
@@ -337,7 +356,7 @@ pub fn Settings(close_settings: impl Fn() + 'static) -> impl IntoView {
         <div class="settings-wrapper">
             {styled::view! { close_button_styles,
                 <button class="close-button" on:click=move |_| close_settings()>
-                    "Close"
+                    <Icon icon=LuX width="20" height="20" />
                 </button>
             }}
             <div class="settings-container">
@@ -374,7 +393,7 @@ pub fn Settings(close_settings: impl Fn() + 'static) -> impl IntoView {
                                             class="button button-danger"
                                             on:click=move |_| remove_path(path_for_remove.clone())
                                         >
-                                            Remove
+                                            <Icon icon=LuTrash2 width="16" height="16" />
                                         </button>
                                     </li>
                                 }
@@ -400,8 +419,8 @@ pub fn Settings(close_settings: impl Fn() + 'static) -> impl IntoView {
                                 }
                             }
                         />
-                        <button class="button button-primary" on:click=move |_| add_path()>
-                            Add Path
+                        <button class="button button-primary button-icon-only" on:click=move |_| add_path()>
+                            <Icon icon=LuPlus width="16" height="16" />
                         </button>
                     </div>
                     {move || {

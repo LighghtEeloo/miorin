@@ -1,5 +1,7 @@
 use crate::tauri_api;
 use leptos::prelude::*;
+use leptos_icons::Icon;
+use icondata::LuSettings;
 use miorin_core::prelude::*;
 use styled::style;
 use wasm_bindgen_futures::spawn_local;
@@ -22,8 +24,8 @@ fn MainView(
     styled::view! { app_container_styles,
         <div class="app-container">
             <GlacierPanel cubes=cubes />
-            <WorkspacePanel open_settings=open_settings />
-            <StreamPanel raw_entries=raw_entries />
+            <WorkspacePanel />
+            <StreamPanel raw_entries=raw_entries open_settings=open_settings />
         </div>
     }
 }
@@ -214,7 +216,7 @@ fn GlacierPanel(cubes: RwSignal<Vec<Cube>>) -> impl IntoView {
 }
 
 #[component]
-fn WorkspacePanel(open_settings: impl Fn(web_sys::MouseEvent) + 'static) -> impl IntoView {
+fn WorkspacePanel() -> impl IntoView {
     let workspace_panel_combined = style! {
         .panel {
             display: flex;
@@ -270,14 +272,8 @@ fn WorkspacePanel(open_settings: impl Fn(web_sys::MouseEvent) + 'static) -> impl
     styled::view! { workspace_panel_combined,
         <div class="panel workspace-panel">
             {styled::view! { panel_header_styles,
-                <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center;">
+                <div class="panel-header">
                     <h2>"Workspace"</h2>
-                    <button
-                        style="padding: 4px 8px; background: var(--color-primary, #007bff); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;"
-                        on:click=open_settings
-                    >
-                        "Settings"
-                    </button>
                 </div>
             }}
             {styled::view! { panel_content_styles,
@@ -296,7 +292,10 @@ fn WorkspacePanel(open_settings: impl Fn(web_sys::MouseEvent) + 'static) -> impl
 }
 
 #[component]
-fn StreamPanel(raw_entries: RwSignal<Vec<Raw>>) -> impl IntoView {
+fn StreamPanel(
+    raw_entries: RwSignal<Vec<Raw>>,
+    open_settings: impl Fn(web_sys::MouseEvent) + 'static,
+) -> impl IntoView {
     let panel_styles = style! {
         .panel {
             display: flex;
@@ -316,12 +315,33 @@ fn StreamPanel(raw_entries: RwSignal<Vec<Raw>>) -> impl IntoView {
             padding: 1rem;
             border-bottom: 1px solid var(--color-border);
             background-color: var(--color-panel-header-bg);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
         .panel-header h2 {
             margin: 0;
             font-size: 1rem;
             font-weight: 600;
             color: var(--color-text);
+        }
+        .settings-button {
+            padding: 6px;
+            background: var(--color-secondary, #6c757d);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            min-width: 28px;
+            transition: background-color 0.2s;
+        }
+        .settings-button:hover {
+            background-color: var(--color-secondary-hover, #5a6268);
         }
     };
 
@@ -346,6 +366,9 @@ fn StreamPanel(raw_entries: RwSignal<Vec<Raw>>) -> impl IntoView {
             {styled::view! { panel_header_styles,
                 <div class="panel-header">
                     <h2>"Stream"</h2>
+                    <button class="settings-button" on:click=open_settings>
+                        <Icon icon=LuSettings width="16" height="16" />
+                    </button>
                 </div>
             }}
             {styled::view! { panel_content_styles,
