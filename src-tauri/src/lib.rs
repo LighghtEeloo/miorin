@@ -50,15 +50,7 @@ pub fn run() {
             update_cube,
             delete_cube,
         ])
-        .setup(|app| {
-            use tauri::Manager;
-            if let Some(window) = app.get_webview_window("main") {
-                // Open devtools automatically in development
-                #[cfg(debug_assertions)]
-                {
-                    window.open_devtools();
-                }
-            }
+        .setup(|_app| {
             Ok(())
         })
         .run(tauri::generate_context!())
