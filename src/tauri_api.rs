@@ -202,3 +202,33 @@ pub async fn toggle_watch_path_enabled(path: String, enabled: bool) -> Result<()
 pub async fn import_files_from_path(path: String) -> Result<u32, String> {
     invoke_tauri("import_files_from_path_cmd", serde_json::json!({ "path": path })).await
 }
+
+/// Store a blob from binary data
+pub async fn store_blob(blob_id: String, data: Vec<u8>) -> Result<(), String> {
+    invoke_tauri("store_blob_cmd", serde_json::json!({ "blob_id": blob_id, "data": data })).await
+}
+
+/// Store a blob from a file path
+pub async fn store_blob_from_file(blob_id: String, source_path: String) -> Result<(), String> {
+    invoke_tauri("store_blob_from_file_cmd", serde_json::json!({ "blob_id": blob_id, "source_path": source_path })).await
+}
+
+/// Get blob data
+pub async fn get_blob(blob_id: String) -> Result<Vec<u8>, String> {
+    invoke_tauri("get_blob_cmd", serde_json::json!({ "blob_id": blob_id })).await
+}
+
+/// Check if a blob exists
+pub async fn blob_exists(blob_id: String) -> Result<bool, String> {
+    invoke_tauri("blob_exists_cmd", serde_json::json!({ "blob_id": blob_id })).await
+}
+
+/// Delete a blob
+pub async fn delete_blob(blob_id: String) -> Result<(), String> {
+    invoke_tauri("delete_blob_cmd", serde_json::json!({ "blob_id": blob_id })).await
+}
+
+/// Generate a thumbnail for an image blob
+pub async fn generate_thumbnail(source_blob_id: String, max_size: u32) -> Result<String, String> {
+    invoke_tauri("generate_thumbnail_cmd", serde_json::json!({ "source_blob_id": source_blob_id, "max_size": max_size })).await
+}

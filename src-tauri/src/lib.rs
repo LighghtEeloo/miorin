@@ -1,10 +1,12 @@
 mod db;
 mod watcher;
 mod settings;
+mod blob;
 
 use db::*;
 use watcher::*;
 use settings::*;
+use blob::*;
 
 #[tauri::command]
 fn toggle_devtools(window: tauri::WebviewWindow) {
@@ -53,6 +55,12 @@ pub fn run() {
             create_cube,
             update_cube,
             delete_cube,
+            store_blob_cmd,
+            store_blob_from_file_cmd,
+            get_blob_cmd,
+            blob_exists_cmd,
+            delete_blob_cmd,
+            generate_thumbnail_cmd,
         ])
         .setup(|app| {
             // Start file watcher for configured path

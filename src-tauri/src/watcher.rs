@@ -6,6 +6,7 @@ use tracing;
 use std::sync::Arc;
 use tokio::sync::mpsc;
 use crate::db::create_raw_entry;
+use crate::blob::{store_blob_from_file, generate_thumbnail};
 
 /// Start watching the configured directories
 pub async fn start_file_watcher(app: AppHandle) -> Result<(), String> {
@@ -113,16 +114,44 @@ async fn handle_file_event(app: &AppHandle, file_path: &Path) -> Result<(), Stri
         let (width, height, format) = get_image_info(file_path)?;
         let blob_id = BlobId(uuid::Uuid::now_v7());
 
-        // TODO: Actually store the image blob and generate thumbnail
-        // For now, just create the entry with metadata
+        // Store the image blob
+        store_blob_from_file(app, blob_id, file_path).await?;
+
+        // Generate thumbnail (max 200px)
+        let thumbnail_blob_id = match generate_thumbnail(app, blob_id, 200).await {
+            Ok((thumb_id, _)) => {
+                tracing::debug!(thumbnail_blob_id = %thumb_id.0, "Generated thumbnail");
+                Some(thumb_id)
+            }
+            Err(e) => {
+                tracing::warn!(error = %e, "Failed to generate thumbnail, continuing without it");
+                None
+            }
+        };
+
+        // Compute dominant color (simplified - just sample center pixel)
+        let dominant_color_rgb = match image::open(file_path) {
+            Ok(img) => {
+                let w = img.width();
+                let h = img.height();
+                if w > 0 && h > 0 {
+                    let rgb_img = img.to_rgb8();
+                    let pixel = rgb_img.get_pixel(w / 2, h / 2);
+                    Some([pixel[0], pixel[1], pixel[2]])
+                } else {
+                    None
+                }
+            }
+            Err(_) => None,
+        };
 
         RawContent::Image(ImageRaw {
             blob_id,
             width,
             height,
             format: Some(format),
-            thumbnail_blob_id: None,
-            dominant_color_rgb: None,
+            thumbnail_blob_id,
+            dominant_color_rgb,
         })
     } else {
         // For text files, read the content
