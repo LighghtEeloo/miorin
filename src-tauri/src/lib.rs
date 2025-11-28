@@ -62,6 +62,7 @@ pub fn run() {
             blob_exists_cmd,
             delete_blob_cmd,
             generate_thumbnail_cmd,
+            get_all_store_data_cmd,
         ])
         .setup(|app| {
             // Start file watcher for configured path

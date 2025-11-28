@@ -1,7 +1,7 @@
 use crate::tauri_api;
 use leptos::prelude::*;
 use leptos_icons::Icon;
-use icondata::{LuDownload, LuPlus, LuTrash2, LuX};
+use icondata::{LuDownload, LuEye, LuEyeOff, LuPlus, LuRefreshCw, LuTrash2, LuX};
 use styled::style;
 use wasm_bindgen_futures::spawn_local;
 use wasm_bindgen::JsCast;
@@ -432,6 +432,10 @@ pub fn Settings(
 
     // Debug: Clear all raw entries state
     let clearing_entries = RwSignal::new(false);
+    
+    // Debug: Show settings storage state
+    let showing_settings_storage = RwSignal::new(false);
+    let settings_storage_data = RwSignal::new(Option::<String>::None);
 
     // Load settings on mount
     spawn_local({
@@ -643,40 +647,114 @@ pub fn Settings(
                     <p class="section-description">
                         Debug functions for development and testing.
                     </p>
-                    {move || {
-                        let clearing_entries_value = clearing_entries.get();
-                        let clearing_entries_signal = clearing_entries.clone();
-                        view! {
-                            <button
-                                class="debug-button"
-                                disabled=clearing_entries_value
-                                on:click=move |_| {
-                                    clearing_entries_signal.set(true);
-                                    let clearing_entries_signal_clone = clearing_entries_signal.clone();
-                                    spawn_local(async move {
-                                        match tauri_api::delete_all_raw_entries().await {
-                                            | Ok(count) => {
-                                                web_sys::console::log_1(
-                                                    &format!("Deleted {} raw entries", count).into(),
-                                                );
-                                                // Reload the page to refresh the UI
-                                                web_sys::window()
-                                                    .and_then(|w| w.location().reload().ok());
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        {move || {
+                            let clearing_entries_value = clearing_entries.get();
+                            let clearing_entries_signal = clearing_entries.clone();
+                            view! {
+                                <button
+                                    class="debug-button"
+                                    disabled=clearing_entries_value
+                                    on:click=move |_| {
+                                        clearing_entries_signal.set(true);
+                                        let clearing_entries_signal_clone = clearing_entries_signal.clone();
+                                        spawn_local(async move {
+                                            match tauri_api::delete_all_raw_entries().await {
+                                                | Ok(count) => {
+                                                    web_sys::console::log_1(
+                                                        &format!("Deleted {} raw entries", count).into(),
+                                                    );
+                                                    // Reload the page to refresh the UI
+                                                    web_sys::window()
+                                                        .and_then(|w| w.location().reload().ok());
+                                                }
+                                                | Err(e) => {
+                                                    web_sys::console::error_1(
+                                                        &format!("Failed to delete all raw entries: {}", e).into(),
+                                                    );
+                                                    clearing_entries_signal_clone.set(false);
+                                                }
                                             }
-                                            | Err(e) => {
-                                                web_sys::console::error_1(
-                                                    &format!("Failed to delete all raw entries: {}", e).into(),
-                                                );
-                                                clearing_entries_signal_clone.set(false);
-                                            }
+                                        });
+                                    }
+                                >
+                                    <Icon icon=LuTrash2 width="16" height="16" />
+                                    {if clearing_entries_value { "Clearing..." } else { "Clear All Raw Entries" }}
+                                </button>
+                            }
+                        }}
+                        {move || {
+                            let showing_settings_storage_value = showing_settings_storage.get();
+                            let showing_settings_storage_signal = showing_settings_storage.clone();
+                            let settings_storage_data_signal = settings_storage_data.clone();
+                            let has_data = settings_storage_data.get().is_some();
+                            view! {
+                                <button
+                                    class="debug-button"
+                                    disabled=showing_settings_storage_value
+                                    on:click=move |_| {
+                                        // Toggle: if data is already shown, hide it
+                                        let current_data = settings_storage_data_signal.get();
+                                        if current_data.is_some() {
+                                            settings_storage_data_signal.set(None);
+                                        } else {
+                                            // Otherwise, fetch and show data
+                                            showing_settings_storage_signal.set(true);
+                                            settings_storage_data_signal.set(None);
+                                            let showing_settings_storage_signal_clone = showing_settings_storage_signal.clone();
+                                            let settings_storage_data_signal_clone = settings_storage_data_signal.clone();
+                                            spawn_local(async move {
+                                                match tauri_api::get_all_store_data().await {
+                                                    | Ok(data) => {
+                                                        let json_string = serde_json::to_string_pretty(&data)
+                                                            .unwrap_or_else(|_| format!("{:?}", data));
+                                                        settings_storage_data_signal_clone.set(Some(json_string));
+                                                        showing_settings_storage_signal_clone.set(false);
+                                                    }
+                                                    | Err(e) => {
+                                                        web_sys::console::error_1(
+                                                            &format!("Failed to get store data: {}", e).into(),
+                                                        );
+                                                        settings_storage_data_signal_clone.set(Some(format!("Error: {}", e)));
+                                                        showing_settings_storage_signal_clone.set(false);
+                                                    }
+                                                }
+                                            });
                                         }
-                                    });
-                                }
-                            >
-                                <Icon icon=LuTrash2 width="16" height="16" />
-                                {if clearing_entries_value { "Clearing..." } else { "Clear All Raw Entries" }}
-                            </button>
-                        }
+                                    }
+                                >
+                                    <Icon icon=if has_data { LuEyeOff } else { LuEye } width="16" height="16" />
+                                    {if showing_settings_storage_value { "Loading..." } else if has_data { "Hide Settings Storage State" } else { "Show Settings Storage State" }}
+                                </button>
+                            }
+                        }}
+                        {move || {
+                            view! {
+                                <button
+                                    class="debug-button"
+                                    on:click=move |_| {
+                                        // Force refresh by reloading the page
+                                        web_sys::window()
+                                            .and_then(|w| w.location().reload().ok());
+                                    }
+                                >
+                                    <Icon icon=LuRefreshCw width="16" height="16" />
+                                    "Force Refresh"
+                                </button>
+                            }
+                        }}
+                    </div>
+                    {move || {
+                        let settings_storage_data_value = settings_storage_data.get();
+                        settings_storage_data_value.map(|data| {
+                            let data_clone = data.clone();
+                            view! {
+                                <div style="margin-top: 20px; background-color: transparent; border-radius: 4px; border: 1px solid var(--color-border, #dee2e6);">
+                                    <h3 style="margin: 0; padding: 15px 15px 10px 15px; font-size: 14px; font-weight: 600;">Settings Storage State:</h3>
+                                    <pre style="margin: 0; padding: 0 15px 15px 15px; background-color: var(--color-bg, #ffffff); overflow-x: auto; font-family: monospace; font-size: 12px; white-space: pre-wrap; word-wrap: break-word; overflow-wrap: break-word; line-height: 1.4;">{data_clone}</pre>
+                                </div>
+                            }
+                        })
                     }}
                 </div>
             </div>

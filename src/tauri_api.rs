@@ -237,3 +237,8 @@ pub async fn delete_blob(blob_id: String) -> Result<(), String> {
 pub async fn generate_thumbnail(source_blob_id: String, max_size: u32) -> Result<String, String> {
     invoke_tauri("generate_thumbnail_cmd", serde_json::json!({ "source_blob_id": source_blob_id, "max_size": max_size })).await
 }
+
+/// Get all stored local data from the settings store
+pub async fn get_all_store_data() -> Result<serde_json::Value, String> {
+    invoke_tauri("get_all_store_data_cmd", serde_json::json!({})).await
+}

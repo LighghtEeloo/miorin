@@ -23,6 +23,49 @@ async fn get_store(
     StoreBuilder::new(app, store_path).build().map_err(|e| format!("Failed to build store: {}", e))
 }
 
+/// Get all stored data from the settings store (Tauri command)
+#[tauri::command]
+pub async fn get_all_store_data_cmd(app: AppHandle) -> Result<serde_json::Value, String> {
+    let store = get_store(&app).await?;
+    
+    // Collect all known keys and their values
+    let mut all_data = serde_json::Map::new();
+    
+    // Get watch paths if it exists
+    if let Some(paths_value) = store.get(WATCH_PATHS_KEY) {
+        all_data.insert(WATCH_PATHS_KEY.to_string(), paths_value.clone());
+    }
+    
+    // Try to get all keys by reading the store file directly
+    use tauri::Manager;
+    let app_data_dir = app.path().app_data_dir().map_err(|e| format!("Failed to get app data dir: {}", e))?;
+    let store_file_path = app_data_dir.join(SETTINGS_STORE_NAME);
+    
+    if store_file_path.exists() {
+        match std::fs::read_to_string(&store_file_path) {
+            Ok(content) => {
+                match serde_json::from_str::<serde_json::Value>(&content) {
+                    Ok(json_data) => {
+                        if let Some(obj) = json_data.as_object() {
+                            for (key, value) in obj {
+                                all_data.insert(key.clone(), value.clone());
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        tracing::warn!("Failed to parse store file as JSON: {}", e);
+                    }
+                }
+            }
+            Err(e) => {
+                tracing::warn!("Failed to read store file: {}", e);
+            }
+        }
+    }
+    
+    Ok(serde_json::Value::Object(all_data))
+}
+
 /// Get all watch path configurations from settings
 pub async fn get_watch_path_configs(app: &AppHandle) -> Result<Vec<WatchPathConfig>, String> {
     let store = get_store(app).await?;
