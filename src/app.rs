@@ -5,7 +5,11 @@ use styled::style;
 use wasm_bindgen_futures::spawn_local;
 
 #[component]
-pub fn App() -> impl IntoView {
+fn MainView(
+    cubes: RwSignal<Vec<Cube>>,
+    raw_entries: RwSignal<Vec<Raw>>,
+    open_settings: impl Fn(web_sys::MouseEvent) + 'static,
+) -> impl IntoView {
     let app_container_styles = style! {
         .app-container {
             display: grid;
@@ -16,6 +20,17 @@ pub fn App() -> impl IntoView {
         }
     };
 
+    styled::view! { app_container_styles,
+        <div class="app-container">
+            <GlacierPanel cubes=cubes />
+            <WorkspacePanel open_settings=open_settings />
+            <StreamPanel raw_entries=raw_entries />
+        </div>
+    }
+}
+
+#[component]
+pub fn App() -> impl IntoView {
     // Load raw entries from database
     let raw_entries = RwSignal::new(Vec::<Raw>::new());
     let raw_entries_clone = raw_entries.clone();
@@ -97,12 +112,36 @@ pub fn App() -> impl IntoView {
         }
     });
 
-    styled::view! { app_container_styles,
-        <div class="app-container">
-            <GlacierPanel cubes=cubes />
-            <WorkspacePanel />
-            <StreamPanel raw_entries=raw_entries />
-        </div>
+    // Settings visibility state
+    let show_settings = RwSignal::new(false);
+
+    // Settings button handler
+    let open_settings = {
+        let show_settings = show_settings.clone();
+        move |_| {
+            show_settings.set(true);
+        }
+    };
+
+    let close_settings = {
+        let show_settings = show_settings.clone();
+        move || {
+            show_settings.set(false);
+        }
+    };
+
+    view! {
+        {move || {
+            if show_settings.get() {
+                view! {
+                    <crate::settings::Settings close_settings=close_settings.clone() />
+                }.into_any()
+            } else {
+                view! {
+                    <MainView cubes=cubes raw_entries=raw_entries open_settings=open_settings />
+                }.into_any()
+            }
+        }}
     }
 }
 
@@ -176,7 +215,7 @@ fn GlacierPanel(cubes: RwSignal<Vec<Cube>>) -> impl IntoView {
 }
 
 #[component]
-fn WorkspacePanel() -> impl IntoView {
+fn WorkspacePanel(open_settings: impl Fn(web_sys::MouseEvent) + 'static) -> impl IntoView {
     let workspace_panel_combined = style! {
         .panel {
             display: flex;
@@ -232,8 +271,14 @@ fn WorkspacePanel() -> impl IntoView {
     styled::view! { workspace_panel_combined,
         <div class="panel workspace-panel">
             {styled::view! { panel_header_styles,
-                <div class="panel-header">
+                <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center;">
                     <h2>"Workspace"</h2>
+                    <button
+                        style="padding: 4px 8px; background: var(--color-primary, #007bff); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;"
+                        on:click=open_settings
+                    >
+                        "Settings"
+                    </button>
                 </div>
             }}
             {styled::view! { panel_content_styles,

@@ -34,3 +34,4 @@ tracing-subscriber = { workspace = true }
 notify = "6.1"
 image = "0.25"
 dirs = "5.0"
+shellexpand = "3.1"

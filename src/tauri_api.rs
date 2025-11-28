@@ -160,3 +160,35 @@ pub async fn delete_raw_entry(id: String) -> Result<(), String> {
 pub async fn delete_cube(id: String) -> Result<(), String> {
     invoke_tauri("delete_cube", serde_json::json!({ "id": id })).await
 }
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct WatchPathConfig {
+    pub path: String,
+    pub enabled: bool,
+}
+
+/// Get all watch path configurations
+pub async fn get_watch_paths() -> Result<Vec<WatchPathConfig>, String> {
+    invoke_tauri("get_watch_paths_cmd", serde_json::json!({})).await
+}
+
+/// Set all watch path configurations
+pub async fn set_watch_paths(configs: Vec<WatchPathConfig>) -> Result<(), String> {
+    invoke_tauri("set_watch_paths_cmd", serde_json::json!({ "configs": configs })).await
+}
+
+/// Add a watch path (returns the canonicalized path)
+pub async fn add_watch_path(path: String) -> Result<String, String> {
+    invoke_tauri("add_watch_path_cmd", serde_json::json!({ "path": path })).await
+}
+
+/// Remove a watch path
+pub async fn remove_watch_path(path: String) -> Result<(), String> {
+    invoke_tauri("remove_watch_path_cmd", serde_json::json!({ "path": path })).await
+}
+
+/// Toggle enabled state for a watch path
+pub async fn toggle_watch_path_enabled(path: String, enabled: bool) -> Result<(), String> {
+    invoke_tauri("toggle_watch_path_enabled_cmd", serde_json::json!({ "path": path, "enabled": enabled })).await
+}
+

@@ -11,6 +11,7 @@ fn toggle_devtools(window: tauri::WebviewWindow) {
     window.open_devtools();
 }
 
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // Initialize tracing subscriber
@@ -43,8 +44,7 @@ pub fn run() {
             set_watch_paths_cmd,
             add_watch_path_cmd,
             remove_watch_path_cmd,
-            get_enable_watcher_cmd,
-            set_enable_watcher_cmd,
+            toggle_watch_path_enabled_cmd,
             get_all_raw_entries,
             create_raw_entry,
             update_raw_entry,

@@ -4,7 +4,12 @@ use tracing;
 
 const SETTINGS_STORE_NAME: &str = "settings.json";
 const WATCH_PATHS_KEY: &str = "watch_paths";
-const ENABLE_WATCHER_KEY: &str = "enable_watcher";
+
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
+pub struct WatchPathConfig {
+    pub path: String,
+    pub enabled: bool,
+}
 
 /// Get the store helper function
 async fn get_store(
@@ -15,120 +20,178 @@ async fn get_store(
     StoreBuilder::new(app, store_path).build().map_err(|e| format!("Failed to build store: {}", e))
 }
 
-/// Get all watch paths from settings
-pub async fn get_watch_paths(app: &AppHandle) -> Result<Vec<PathBuf>, String> {
+/// Get all watch path configurations from settings
+pub async fn get_watch_path_configs(app: &AppHandle) -> Result<Vec<WatchPathConfig>, String> {
     let store = get_store(app).await?;
 
     if let Some(paths_value) = store.get(WATCH_PATHS_KEY) {
         if let Some(paths_array) = paths_value.as_array() {
-            let paths: Vec<PathBuf> =
-                paths_array.iter().filter_map(|v| v.as_str().map(PathBuf::from)).collect();
-            if !paths.is_empty() {
-                tracing::debug!(watch_paths = ?paths, "Found watch paths in settings");
-                return Ok(paths);
-            }
+            let configs: Vec<WatchPathConfig> = paths_array
+                .iter()
+                .filter_map(|v| serde_json::from_value(v.clone()).ok())
+                .collect();
+            tracing::debug!(watch_paths = ?configs, "Found watch paths in settings");
+            return Ok(configs);
         }
     }
 
-    // Return default path if no paths are configured
-    let default_path =
-        dirs::home_dir().ok_or("Failed to get home directory")?.join("Downloads/Pic");
-
-    tracing::debug!(default_path = ?default_path, "Using default watch path");
-    Ok(vec![default_path])
+    // Return empty vector if no paths are configured
+    tracing::debug!("No watch paths configured");
+    Ok(vec![])
 }
 
-/// Set watch paths in settings
-pub async fn set_watch_paths(app: &AppHandle, paths: Vec<PathBuf>) -> Result<(), String> {
-    let path_strings: Vec<String> = paths.iter().map(|p| p.to_string_lossy().to_string()).collect();
+/// Get all watch paths (for backward compatibility and watcher)
+pub async fn get_watch_paths(app: &AppHandle) -> Result<Vec<PathBuf>, String> {
+    let configs = get_watch_path_configs(app).await?;
+    Ok(configs
+        .iter()
+        .filter(|c| c.enabled)
+        .map(|c| PathBuf::from(&c.path))
+        .collect())
+}
 
-    tracing::info!(watch_paths = ?path_strings, "Setting watch paths in settings");
+/// Set watch path configurations in settings
+pub async fn set_watch_path_configs(
+    app: &AppHandle,
+    configs: Vec<WatchPathConfig>,
+) -> Result<(), String> {
+    tracing::info!(watch_paths = ?configs, "Setting watch paths in settings");
 
     let store = get_store(app).await?;
-    store.set(WATCH_PATHS_KEY.to_string(), serde_json::json!(path_strings));
+    store.set(
+        WATCH_PATHS_KEY.to_string(),
+        serde_json::json!(configs),
+    );
     store.save().map_err(|e| format!("Failed to save settings: {}", e))?;
 
     Ok(())
 }
 
-/// Get whether the watcher is enabled
-pub async fn get_enable_watcher(app: &AppHandle) -> Result<bool, String> {
-    let store = get_store(app).await?;
-
-    if let Some(enabled_value) = store.get(ENABLE_WATCHER_KEY) {
-        if let Some(enabled) = enabled_value.as_bool() {
-            tracing::debug!(enabled = enabled, "Found enable_watcher in settings");
-            return Ok(enabled);
-        }
-    }
-
-    // Default to false
-    tracing::debug!("Using default enable_watcher: false");
-    Ok(false)
-}
-
-/// Set whether the watcher is enabled
-pub async fn set_enable_watcher(app: &AppHandle, enabled: bool) -> Result<(), String> {
-    tracing::info!(enabled = enabled, "Setting enable_watcher in settings");
-
-    let store = get_store(app).await?;
-    store.set(ENABLE_WATCHER_KEY.to_string(), serde_json::json!(enabled));
-    store.save().map_err(|e| format!("Failed to save settings: {}", e))?;
-
-    Ok(())
-}
 
 // Tauri commands
 
-/// Get all watch paths (Tauri command)
+/// Get all watch path configurations (Tauri command)
 #[tauri::command]
-pub async fn get_watch_paths_cmd(app: AppHandle) -> Result<Vec<String>, String> {
-    let paths = get_watch_paths(&app).await?;
-    Ok(paths.iter().map(|p| p.to_string_lossy().to_string()).collect())
+pub async fn get_watch_paths_cmd(app: AppHandle) -> Result<Vec<WatchPathConfig>, String> {
+    get_watch_path_configs(&app).await
 }
 
-/// Set all watch paths (Tauri command)
+/// Set all watch path configurations (Tauri command)
 #[tauri::command]
-pub async fn set_watch_paths_cmd(app: AppHandle, paths: Vec<String>) -> Result<(), String> {
-    let path_bufs: Vec<PathBuf> = paths.iter().map(PathBuf::from).collect();
-    set_watch_paths(&app, path_bufs).await
+pub async fn set_watch_paths_cmd(
+    app: AppHandle,
+    configs: Vec<WatchPathConfig>,
+) -> Result<(), String> {
+    set_watch_path_configs(&app, configs).await
+}
+
+/// Expand shell variables and tilde in a path string
+fn expand_shell_path(path_str: &str) -> Result<String, String> {
+    shellexpand::full(path_str)
+        .map(|s| s.into_owned())
+        .map_err(|e| format!("Failed to expand shell path '{}': {}", path_str, e))
+}
+
+/// Validate and canonicalize a path
+/// Expands shell variables (~, $HOME, etc.), resolves relative paths, and validates the path exists and is a directory
+pub fn validate_and_canonicalize_path(path_str: &str) -> Result<PathBuf, String> {
+    // First, expand shell variables and tilde
+    let expanded_str = expand_shell_path(path_str)?;
+    let mut path = PathBuf::from(&expanded_str);
+    
+    // Resolve to absolute path if relative
+    if path.is_relative() {
+        let current_dir = std::env::current_dir()
+            .map_err(|e| format!("Failed to get current directory: {}", e))?;
+        path = current_dir.join(&path);
+    }
+    
+    // Canonicalize (resolve symlinks, etc.)
+    let canonical = path.canonicalize()
+        .map_err(|e| {
+            // If path doesn't exist, provide a more helpful error
+            if e.kind() == std::io::ErrorKind::NotFound {
+                format!("Path does not exist: {}", path_str)
+            } else {
+                format!("Failed to resolve path '{}': {}", path_str, e)
+            }
+        })?;
+    
+    // Validate it's a directory
+    if !canonical.is_dir() {
+        return Err(format!("Path is not a directory: {}", canonical.display()));
+    }
+    
+    // Check if directory is readable
+    std::fs::read_dir(&canonical)
+        .map_err(|e| format!("Cannot read directory '{}': {}", canonical.display(), e))?;
+    
+    Ok(canonical)
 }
 
 /// Add a watch path (Tauri command)
 #[tauri::command]
-pub async fn add_watch_path_cmd(app: AppHandle, path: String) -> Result<(), String> {
-    let mut paths = get_watch_paths(&app).await?;
-    let new_path = PathBuf::from(path);
-
-    // Avoid duplicates
-    if !paths.contains(&new_path) {
-        paths.push(new_path);
-        set_watch_paths(&app, paths).await?;
+pub async fn add_watch_path_cmd(app: AppHandle, path: String) -> Result<String, String> {
+    // Validate and canonicalize the path
+    let canonical_path = validate_and_canonicalize_path(&path)?;
+    let canonical_str = canonical_path.to_string_lossy().to_string();
+    
+    let mut configs = get_watch_path_configs(&app).await?;
+    
+    // Check for duplicates using canonical paths
+    let canonical_paths: Vec<PathBuf> = configs
+        .iter()
+        .map(|c| {
+            PathBuf::from(&c.path)
+                .canonicalize()
+                .unwrap_or_else(|_| PathBuf::from(&c.path))
+        })
+        .collect();
+    
+    let canonical_path_normalized = canonical_path
+        .canonicalize()
+        .unwrap_or_else(|_| canonical_path.clone());
+    
+    if canonical_paths.contains(&canonical_path_normalized) {
+        return Err(format!("Path already exists: {}", canonical_str));
     }
-
-    Ok(())
+    
+    // Add the canonical path with enabled=false by default
+    configs.push(WatchPathConfig {
+        path: canonical_str.clone(),
+        enabled: false,
+    });
+    set_watch_path_configs(&app, configs).await?;
+    
+    tracing::info!(original_path = %path, canonical_path = %canonical_str, "Added watch path");
+    
+    Ok(canonical_str)
 }
 
 /// Remove a watch path (Tauri command)
 #[tauri::command]
 pub async fn remove_watch_path_cmd(app: AppHandle, path: String) -> Result<(), String> {
-    let mut paths = get_watch_paths(&app).await?;
-    let path_to_remove = PathBuf::from(path);
-
-    paths.retain(|p| p != &path_to_remove);
-    set_watch_paths(&app, paths).await?;
-
+    let mut configs = get_watch_path_configs(&app).await?;
+    configs.retain(|c| c.path != path);
+    set_watch_path_configs(&app, configs).await?;
     Ok(())
 }
 
-/// Get whether the watcher is enabled (Tauri command)
+/// Toggle enabled state for a watch path (Tauri command)
 #[tauri::command]
-pub async fn get_enable_watcher_cmd(app: AppHandle) -> Result<bool, String> {
-    get_enable_watcher(&app).await
+pub async fn toggle_watch_path_enabled_cmd(
+    app: AppHandle,
+    path: String,
+    enabled: bool,
+) -> Result<(), String> {
+    let mut configs = get_watch_path_configs(&app).await?;
+    for config in &mut configs {
+        if config.path == path {
+            config.enabled = enabled;
+            break;
+        }
+    }
+    set_watch_path_configs(&app, configs).await?;
+    Ok(())
 }
 
-/// Set whether the watcher is enabled (Tauri command)
-#[tauri::command]
-pub async fn set_enable_watcher_cmd(app: AppHandle, enabled: bool) -> Result<(), String> {
-    set_enable_watcher(&app, enabled).await
-}

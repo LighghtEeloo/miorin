@@ -1,7 +1,9 @@
 mod app;
 mod tauri_api;
+mod settings;
 
 use app::*;
+use settings::*;
 use leptos::prelude::*;
 
 fn main() {

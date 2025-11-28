@@ -9,16 +9,9 @@ use crate::db::create_raw_entry;
 
 /// Start watching the configured directories
 pub async fn start_file_watcher(app: AppHandle) -> Result<(), String> {
-    use crate::settings::{get_watch_paths, get_enable_watcher};
+    use crate::settings::get_watch_paths;
 
-    // Check if watcher is enabled
-    let enabled = get_enable_watcher(&app).await?;
-    if !enabled {
-        tracing::info!("File watcher is disabled in settings");
-        return Ok(());
-    }
-
-    // Get watch paths from settings
+    // Get enabled watch paths from settings
     let watch_paths = get_watch_paths(&app).await?;
 
     if watch_paths.is_empty() {
