@@ -158,6 +158,11 @@ pub async fn delete_raw_entry(id: String) -> Result<(), String> {
     invoke_tauri("delete_raw_entry", serde_json::json!({ "id": id })).await
 }
 
+/// Delete all raw entries (debug function)
+pub async fn delete_all_raw_entries() -> Result<u32, String> {
+    invoke_tauri("delete_all_raw_entries", serde_json::json!({})).await
+}
+
 /// Delete a cube
 pub async fn delete_cube(id: String) -> Result<(), String> {
     invoke_tauri("delete_cube", serde_json::json!({ "id": id })).await

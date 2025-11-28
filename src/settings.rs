@@ -386,6 +386,32 @@ pub fn Settings(close_settings: impl Fn() + 'static) -> impl IntoView {
             padding: 0;
             margin: 0;
         }
+        .debug-section {
+            margin-top: 40px;
+            padding-top: 30px;
+            border-top: 1px solid var(--color-border, #dee2e6);
+        }
+        .debug-button {
+            padding: 10px 20px;
+            background-color: var(--color-danger, #dc3545);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: background-color 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .debug-button:hover {
+            background-color: var(--color-danger-hover, #c82333);
+        }
+        .debug-button:disabled {
+            background-color: var(--color-text-secondary, #6c757d);
+            cursor: not-allowed;
+        }
     };
 
     // Watch paths state
@@ -400,6 +426,9 @@ pub fn Settings(close_settings: impl Fn() + 'static) -> impl IntoView {
 
     // Import progress state (path being imported, or None if not importing)
     let importing_path = RwSignal::new(Option::<String>::None);
+
+    // Debug: Clear all raw entries state
+    let clearing_entries = RwSignal::new(false);
 
     // Load settings on mount
     spawn_local({
@@ -590,6 +619,47 @@ pub fn Settings(close_settings: impl Fn() + 'static) -> impl IntoView {
                                 error_message=error_message.get()
                             />
                         }.into_any()
+                    }}
+                </div>
+                <div class="section debug-section">
+                    <h2 class="section-title">Debug</h2>
+                    <p class="section-description">
+                        Debug functions for development and testing.
+                    </p>
+                    {move || {
+                        let clearing_entries_value = clearing_entries.get();
+                        let clearing_entries_signal = clearing_entries.clone();
+                        view! {
+                            <button
+                                class="debug-button"
+                                disabled=clearing_entries_value
+                                on:click=move |_| {
+                                    clearing_entries_signal.set(true);
+                                    let clearing_entries_signal_clone = clearing_entries_signal.clone();
+                                    spawn_local(async move {
+                                        match tauri_api::delete_all_raw_entries().await {
+                                            | Ok(count) => {
+                                                web_sys::console::log_1(
+                                                    &format!("Deleted {} raw entries", count).into(),
+                                                );
+                                                // Reload the page to refresh the UI
+                                                web_sys::window()
+                                                    .and_then(|w| w.location().reload().ok());
+                                            }
+                                            | Err(e) => {
+                                                web_sys::console::error_1(
+                                                    &format!("Failed to delete all raw entries: {}", e).into(),
+                                                );
+                                                clearing_entries_signal_clone.set(false);
+                                            }
+                                        }
+                                    });
+                                }
+                            >
+                                <Icon icon=LuTrash2 width="16" height="16" />
+                                {if clearing_entries_value { "Clearing..." } else { "Clear All Raw Entries" }}
+                            </button>
+                        }
                     }}
                 </div>
             </div>

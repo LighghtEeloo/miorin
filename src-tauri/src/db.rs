@@ -315,6 +315,20 @@ pub async fn delete_raw_entry(app: AppHandle, id: String) -> Result<(), String> 
     Ok(())
 }
 
+/// Delete all raw entries (debug function)
+#[tauri::command]
+pub async fn delete_all_raw_entries(app: AppHandle) -> Result<u32, String> {
+    let pool = get_db_pool(&app).await?;
+
+    let result = sqlx::query("DELETE FROM raw_entries")
+        .execute(&pool)
+        .await
+        .map_err(|e| format!("Failed to delete all raw entries: {}", e))?;
+
+    tracing::info!(deleted_count = result.rows_affected(), "Deleted all raw entries");
+    Ok(result.rows_affected() as u32)
+}
+
 /// Get all cubes
 #[tauri::command]
 pub async fn get_all_cubes(app: AppHandle) -> Result<Vec<Cube>, String> {

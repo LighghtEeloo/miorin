@@ -51,6 +51,7 @@ pub fn run() {
             create_raw_entry,
             update_raw_entry,
             delete_raw_entry,
+            delete_all_raw_entries,
             get_all_cubes,
             create_cube,
             update_cube,
