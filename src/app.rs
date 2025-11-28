@@ -6,12 +6,14 @@ use uuid::Uuid;
 
 #[component]
 pub fn App() -> impl IntoView {
+    
     let app_container_styles = style! {
         .app-container {
             display: grid;
             grid-template-columns: 250px 1fr 300px;
             height: 100vh;
             overflow: hidden;
+            background-color: var(--color-bg);
         }
     };
 
@@ -21,61 +23,12 @@ pub fn App() -> impl IntoView {
     // Create dummy documents
     let documents = create_dummy_documents();
 
-    view! {
-        <>
-            <style>
-                {r#"
-                html, body {
-                    margin: 0;
-                    padding: 0;
-                    height: 100%;
-                    overflow: hidden;
-                }
-                :root {
-                    font-family: Inter, Avenir, Helvetica, Arial, sans-serif;
-                    font-size: 16px;
-                    line-height: 24px;
-                    font-weight: 400;
-                    font-synthesis: none;
-                    text-rendering: optimizeLegibility;
-                    -webkit-font-smoothing: antialiased;
-                    -moz-osx-font-smoothing: grayscale;
-                    -webkit-text-size-adjust: 100%;
-                    --color-text: #0f0f0f;
-                    --color-text-secondary: #666;
-                    --color-text-muted: #999;
-                    --color-bg: #f6f6f6;
-                    --color-panel-bg: #ffffff;
-                    --color-panel-header-bg: #f8f8f8;
-                    --color-workspace-bg: #fafafa;
-                    --color-border: #e0e0e0;
-                    --color-hover: #f5f5f5;
-                    color: var(--color-text);
-                    background-color: var(--color-bg);
-                }
-                @media (prefers-color-scheme: dark) {
-                    :root {
-                        --color-text: #f6f6f6;
-                        --color-text-secondary: #999;
-                        --color-text-muted: #666;
-                        --color-bg: #2f2f2f;
-                        --color-panel-bg: #1e1e1e;
-                        --color-panel-header-bg: #252525;
-                        --color-workspace-bg: #1a1a1a;
-                        --color-border: #3a3a3a;
-                        --color-hover: #2a2a2a;
-                    }
-                }
-                "#}
-            </style>
-            {styled::view! { app_container_styles,
+    styled::view! { app_container_styles,
         <div class="app-container">
             <GlacierPanel documents=documents />
             <WorkspacePanel />
             <StreamPanel raw_entries=raw_entries />
         </div>
-            }}
-        </>
     }
 }
 
