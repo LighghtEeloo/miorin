@@ -20,14 +20,7 @@ pub fn App() -> impl IntoView {
                 <div class="panel-content">
                     <div class="entries-list">
                         {documents.into_iter().map(|doc| {
-                            let title = doc.inner.title.clone();
-                            let created = doc.created_at.format("%Y-%m-%d %H:%M").to_string();
-                            view! {
-                                <div class="entry-item">
-                                    <div class="entry-title">{title}</div>
-                                    <div class="entry-meta">{created}</div>
-                                </div>
-                            }
+                            view! { <DocumentEntry document=doc /> }
                         }).collect::<Vec<_>>()}
                     </div>
                 </div>
@@ -51,51 +44,81 @@ pub fn App() -> impl IntoView {
                 <div class="panel-content">
                     <div class="entries-list">
                         {raw_entries.into_iter().map(|raw| {
-                            let preview = match &raw.inner.kind {
-                                RawKind::Text(text) => {
-                                    let preview_text = if text.content.len() > 50 {
-                                        format!("{}...", &text.content[..50])
-                                    } else {
-                                        text.content.clone()
-                                    };
-                                    view! {
-                                        <div class="raw-preview">
-                                            <div class="raw-icon">"📄"</div>
-                                            <div class="raw-content">{preview_text}</div>
-                                        </div>
-                                    }
-                                }
-                                RawKind::Image(img) => {
-                                    view! {
-                                        <div class="raw-preview">
-                                            <div class="raw-icon">"🖼️"</div>
-                                            <div class="raw-content">{format!("Image ({}x{})", img.width, img.height)}</div>
-                                        </div>
-                                    }
-                                }
-                            };
-                            let source = match &raw.inner.source {
-                                RawSource::Clipboard { application } => {
-                                    format!("Clipboard{}", application.as_ref().map(|a| format!(" ({})", a)).unwrap_or_default())
-                                }
-                                RawSource::FileWatcher { original_path } => {
-                                    format!("File: {}", original_path.display())
-                                }
-                                RawSource::ManualImport => "Manual Import".to_string(),
-                            };
-                            let created = raw.created_at.format("%Y-%m-%d %H:%M").to_string();
-                            view! {
-                                <div class="entry-item raw-entry">
-                                    {preview}
-                                    <div class="entry-meta">{source}</div>
-                                    <div class="entry-meta">{created}</div>
-                                </div>
-                            }
+                            view! { <RawEntry raw=raw /> }
                         }).collect::<Vec<_>>()}
                     </div>
                 </div>
             </div>
         </div>
+    }
+}
+
+#[component]
+fn DocumentEntry(document: Document) -> impl IntoView {
+    let title = document.inner.title.clone();
+    let created = document.created_at.format("%Y-%m-%d %H:%M").to_string();
+    view! {
+        <div class="entry-item">
+            <div class="entry-title">{title}</div>
+            <div class="entry-meta">{created}</div>
+        </div>
+    }
+}
+
+#[component]
+fn RawEntry(raw: RawEntry) -> impl IntoView {
+    let source = format_raw_source(&raw.inner.source);
+    let created = raw.created_at.format("%Y-%m-%d %H:%M").to_string();
+    let kind = raw.inner.kind.clone();
+    view! {
+        <div class="entry-item raw-entry">
+            <RawPreview kind=kind />
+            <div class="entry-meta">{source}</div>
+            <div class="entry-meta">{created}</div>
+        </div>
+    }
+}
+
+#[component]
+fn RawPreview(kind: RawKind) -> impl IntoView {
+    view! {
+        <div class="raw-preview">
+            {match &kind {
+                RawKind::Text(text) => {
+                    let preview_text = if text.content.len() > 50 {
+                        format!("{}...", &text.content[..50])
+                    } else {
+                        text.content.clone()
+                    };
+                    view! {
+                        <>
+                            <div class="raw-icon">"📄"</div>
+                            <div class="raw-content">{preview_text}</div>
+                        </>
+                    }
+                }
+                RawKind::Image(img) => {
+                    view! {
+                        <>
+                            <div class="raw-icon">"🖼️"</div>
+                            <div class="raw-content">{format!("Image ({}x{})", img.width, img.height)}</div>
+                        </>
+                    }
+                }
+            }}
+        </div>
+    }
+}
+
+fn format_raw_source(source: &RawSource) -> String {
+    match source {
+        RawSource::Clipboard { application } => {
+            format!("Clipboard{}", application.as_ref().map(|a| format!(" ({})", a)).unwrap_or_default())
+        }
+        RawSource::FileWatcher { original_path } => {
+            format!("File: {}", original_path.display())
+        }
+        RawSource::ManualImport => "Manual Import".to_string(),
     }
 }
 
