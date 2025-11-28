@@ -1,3 +1,5 @@
+#![allow(unused)]
+
 use miorin_core::prelude::*;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::JsFuture;
