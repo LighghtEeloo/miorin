@@ -11,10 +11,10 @@ pub struct BlobId(pub Uuid);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct RawId(pub Uuid);
 
-pub type RawEntry = Meta<RawId, RawEntryInner>;
+pub type Raw = Meta<RawId, RawInner>;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct RawEntryInner {
+pub struct RawInner {
     pub source: RawSource,
     pub content: RawContent,
 }

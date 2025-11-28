@@ -6,7 +6,6 @@ use uuid::Uuid;
 
 #[component]
 pub fn App() -> impl IntoView {
-    
     let app_container_styles = style! {
         .app-container {
             display: grid;
@@ -174,7 +173,7 @@ fn WorkspacePanel() -> impl IntoView {
 }
 
 #[component]
-fn StreamPanel(raw_entries: Vec<RawEntry>) -> impl IntoView {
+fn StreamPanel(raw_entries: Vec<Raw>) -> impl IntoView {
     let panel_styles = style! {
         .panel {
             display: flex;
@@ -325,7 +324,7 @@ fn CubeEntry(cube: Cube) -> impl IntoView {
 }
 
 #[component]
-fn RawEntry(raw: RawEntry) -> impl IntoView {
+fn RawEntry(raw: Raw) -> impl IntoView {
     let entry_item_styles = style! {
         .entry-item {
             padding: 0.75rem;
@@ -465,14 +464,14 @@ fn format_raw_source(source: &RawSource) -> String {
     }
 }
 
-fn create_dummy_raw_entries() -> Vec<RawEntry> {
+fn create_dummy_raw_entries() -> Vec<Raw> {
     vec![
-        RawEntry {
+        Raw {
             id: RawId(Uuid::now_v7()),
             created_at: Utc::now() - chrono::Duration::hours(2),
             updated_at: Utc::now() - chrono::Duration::hours(2),
             vibe: None,
-            inner: RawEntryInner {
+            inner: RawInner {
                 source: RawSource::Clipboard {
                     application: Some("Chrome".to_string()),
                 },
@@ -483,12 +482,12 @@ fn create_dummy_raw_entries() -> Vec<RawEntry> {
                 }),
             },
         },
-        RawEntry {
+        Raw {
             id: RawId(Uuid::now_v7()),
             created_at: Utc::now() - chrono::Duration::hours(1),
             updated_at: Utc::now() - chrono::Duration::hours(1),
             vibe: None,
-            inner: RawEntryInner {
+            inner: RawInner {
                 source: RawSource::FileWatcher {
                     original_path: std::path::PathBuf::from("/Users/me/Documents/notes.txt"),
                 },
@@ -499,12 +498,12 @@ fn create_dummy_raw_entries() -> Vec<RawEntry> {
                 }),
             },
         },
-        RawEntry {
+        Raw {
             id: RawId(Uuid::now_v7()),
             created_at: Utc::now() - chrono::Duration::minutes(30),
             updated_at: Utc::now() - chrono::Duration::minutes(30),
             vibe: None,
-            inner: RawEntryInner {
+            inner: RawInner {
                 source: RawSource::Clipboard {
                     application: Some("VSCode".to_string()),
                 },
@@ -515,12 +514,12 @@ fn create_dummy_raw_entries() -> Vec<RawEntry> {
                 }),
             },
         },
-        RawEntry {
+        Raw {
             id: RawId(Uuid::now_v7()),
             created_at: Utc::now() - chrono::Duration::minutes(15),
             updated_at: Utc::now() - chrono::Duration::minutes(15),
             vibe: None,
-            inner: RawEntryInner {
+            inner: RawInner {
                 source: RawSource::ManualImport,
                 content: RawContent::Image(ImageRaw {
                     blob_id: BlobId(Uuid::now_v7()),
