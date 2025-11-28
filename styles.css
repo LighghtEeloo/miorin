@@ -91,6 +91,115 @@ button {
   margin-right: 5px;
 }
 
+/* Three-panel layout */
+.app-container {
+  display: grid;
+  grid-template-columns: 250px 1fr 300px;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid #e0e0e0;
+  background-color: #ffffff;
+  overflow: hidden;
+}
+
+.panel:last-child {
+  border-right: none;
+}
+
+.panel-header {
+  padding: 1rem;
+  border-bottom: 1px solid #e0e0e0;
+  background-color: #f8f8f8;
+}
+
+.panel-header h2 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #333;
+}
+
+.panel-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.5rem;
+}
+
+.entries-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.entry-item {
+  padding: 0.75rem;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  background-color: #ffffff;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.entry-item:hover {
+  background-color: #f5f5f5;
+}
+
+.entry-title {
+  font-weight: 500;
+  color: #333;
+  margin-bottom: 0.25rem;
+}
+
+.entry-meta {
+  font-size: 0.75rem;
+  color: #666;
+  margin-top: 0.25rem;
+}
+
+.raw-entry {
+  display: flex;
+  flex-direction: column;
+}
+
+.raw-preview {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.raw-icon {
+  font-size: 1.25rem;
+}
+
+.raw-content {
+  flex: 1;
+  font-size: 0.875rem;
+  color: #555;
+  word-break: break-word;
+}
+
+.workspace-panel {
+  background-color: #fafafa;
+}
+
+.workspace-editor {
+  padding: 2rem;
+  min-height: 100%;
+}
+
+.placeholder-text {
+  color: #999;
+  font-style: italic;
+  text-align: center;
+  margin-top: 3rem;
+}
+
 @media (prefers-color-scheme: dark) {
   :root {
     color: #f6f6f6;
@@ -108,5 +217,48 @@ button {
   }
   button:active {
     background-color: #0f0f0f69;
+  }
+
+  .panel {
+    background-color: #1e1e1e;
+    border-right-color: #3a3a3a;
+  }
+
+  .panel-header {
+    background-color: #252525;
+    border-bottom-color: #3a3a3a;
+  }
+
+  .panel-header h2 {
+    color: #f6f6f6;
+  }
+
+  .entry-item {
+    background-color: #252525;
+    border-color: #3a3a3a;
+  }
+
+  .entry-item:hover {
+    background-color: #2a2a2a;
+  }
+
+  .entry-title {
+    color: #f6f6f6;
+  }
+
+  .entry-meta {
+    color: #999;
+  }
+
+  .raw-content {
+    color: #ccc;
+  }
+
+  .workspace-panel {
+    background-color: #1a1a1a;
+  }
+
+  .placeholder-text {
+    color: #666;
   }
 }

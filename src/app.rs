@@ -1,67 +1,218 @@
-use leptos::task::spawn_local;
-use leptos::{ev::SubmitEvent, prelude::*};
-use serde::{Deserialize, Serialize};
-use wasm_bindgen::prelude::*;
-
-#[wasm_bindgen]
-extern "C" {
-    #[wasm_bindgen(js_namespace = ["window", "__TAURI__", "core"])]
-    async fn invoke(cmd: &str, args: JsValue) -> JsValue;
-}
-
-#[derive(Serialize, Deserialize)]
-struct GreetArgs<'a> {
-    name: &'a str,
-}
+use leptos::prelude::*;
+use miorin_core::prelude::*;
+use chrono::Utc;
+use uuid::Uuid;
 
 #[component]
 pub fn App() -> impl IntoView {
-    let (name, set_name) = signal(String::new());
-    let (greet_msg, set_greet_msg) = signal(String::new());
-
-    let update_name = move |ev| {
-        let v = event_target_value(&ev);
-        set_name.set(v);
-    };
-
-    let greet = move |ev: SubmitEvent| {
-        ev.prevent_default();
-        spawn_local(async move {
-            let name = name.get_untracked();
-            if name.is_empty() {
-                return;
-            }
-
-            let args = serde_wasm_bindgen::to_value(&GreetArgs { name: &name }).unwrap();
-            // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-            let new_msg = invoke("greet", args).await.as_string().unwrap();
-            set_greet_msg.set(new_msg);
-        });
-    };
+    // Create dummy raw entries
+    let raw_entries = create_dummy_raw_entries();
+    
+    // Create dummy documents
+    let documents = create_dummy_documents();
 
     view! {
-        <main class="container">
-            <h1>"Welcome to Tauri + Leptos"</h1>
-
-            <div class="row">
-                <a href="https://tauri.app" target="_blank">
-                    <img src="public/tauri.svg" class="logo tauri" alt="Tauri logo"/>
-                </a>
-                <a href="https://docs.rs/leptos/" target="_blank">
-                    <img src="public/leptos.svg" class="logo leptos" alt="Leptos logo"/>
-                </a>
+        <div class="app-container">
+            <div class="panel glacier-panel">
+                <div class="panel-header">
+                    <h2>"Glacier"</h2>
+                </div>
+                <div class="panel-content">
+                    <div class="entries-list">
+                        {documents.into_iter().map(|doc| {
+                            let title = doc.inner.title.clone();
+                            let created = doc.created_at.format("%Y-%m-%d %H:%M").to_string();
+                            view! {
+                                <div class="entry-item">
+                                    <div class="entry-title">{title}</div>
+                                    <div class="entry-meta">{created}</div>
+                                </div>
+                            }
+                        }).collect::<Vec<_>>()}
+                    </div>
+                </div>
             </div>
-            <p>"Click on the Tauri and Leptos logos to learn more."</p>
 
-            <form class="row" on:submit=greet>
-                <input
-                    id="greet-input"
-                    placeholder="Enter a name..."
-                    on:input=update_name
-                />
-                <button type="submit">"Greet"</button>
-            </form>
-            <p>{ move || greet_msg.get() }</p>
-        </main>
+            <div class="panel workspace-panel">
+                <div class="panel-header">
+                    <h2>"Workspace"</h2>
+                </div>
+                <div class="panel-content">
+                    <div class="workspace-editor">
+                        <p class="placeholder-text">"Select a document from Glacier or drag raw material from Stream to start editing..."</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel stream-panel">
+                <div class="panel-header">
+                    <h2>"Stream"</h2>
+                </div>
+                <div class="panel-content">
+                    <div class="entries-list">
+                        {raw_entries.into_iter().map(|raw| {
+                            let preview = match &raw.inner.kind {
+                                RawKind::Text(text) => {
+                                    let preview_text = if text.content.len() > 50 {
+                                        format!("{}...", &text.content[..50])
+                                    } else {
+                                        text.content.clone()
+                                    };
+                                    view! {
+                                        <div class="raw-preview">
+                                            <div class="raw-icon">"📄"</div>
+                                            <div class="raw-content">{preview_text}</div>
+                                        </div>
+                                    }
+                                }
+                                RawKind::Image(img) => {
+                                    view! {
+                                        <div class="raw-preview">
+                                            <div class="raw-icon">"🖼️"</div>
+                                            <div class="raw-content">{format!("Image ({}x{})", img.width, img.height)}</div>
+                                        </div>
+                                    }
+                                }
+                            };
+                            let source = match &raw.inner.source {
+                                RawSource::Clipboard { application } => {
+                                    format!("Clipboard{}", application.as_ref().map(|a| format!(" ({})", a)).unwrap_or_default())
+                                }
+                                RawSource::FileWatcher { original_path } => {
+                                    format!("File: {}", original_path.display())
+                                }
+                                RawSource::ManualImport => "Manual Import".to_string(),
+                            };
+                            let created = raw.created_at.format("%Y-%m-%d %H:%M").to_string();
+                            view! {
+                                <div class="entry-item raw-entry">
+                                    {preview}
+                                    <div class="entry-meta">{source}</div>
+                                    <div class="entry-meta">{created}</div>
+                                </div>
+                            }
+                        }).collect::<Vec<_>>()}
+                    </div>
+                </div>
+            </div>
+        </div>
     }
+}
+
+fn create_dummy_raw_entries() -> Vec<RawEntry> {
+    vec![
+        RawEntry {
+            id: RawId(Uuid::now_v7()),
+            created_at: Utc::now() - chrono::Duration::hours(2),
+            updated_at: Utc::now() - chrono::Duration::hours(2),
+            vibe: None,
+            inner: RawEntryInner {
+                source: RawSource::Clipboard {
+                    application: Some("Chrome".to_string()),
+                },
+                kind: RawKind::Text(TextRaw {
+                    content: "This is a note I copied from a website about Rust programming.".to_string(),
+                    mime_type: Some("text/plain".to_string()),
+                    language: Some("en".to_string()),
+                }),
+            },
+        },
+        RawEntry {
+            id: RawId(Uuid::now_v7()),
+            created_at: Utc::now() - chrono::Duration::hours(1),
+            updated_at: Utc::now() - chrono::Duration::hours(1),
+            vibe: None,
+            inner: RawEntryInner {
+                source: RawSource::FileWatcher {
+                    original_path: std::path::PathBuf::from("/Users/me/Documents/notes.txt"),
+                },
+                kind: RawKind::Text(TextRaw {
+                    content: "A longer piece of text that was automatically collected from a watched folder. This demonstrates how the file watcher works.".to_string(),
+                    mime_type: Some("text/plain".to_string()),
+                    language: Some("en".to_string()),
+                }),
+            },
+        },
+        RawEntry {
+            id: RawId(Uuid::now_v7()),
+            created_at: Utc::now() - chrono::Duration::minutes(30),
+            updated_at: Utc::now() - chrono::Duration::minutes(30),
+            vibe: None,
+            inner: RawEntryInner {
+                source: RawSource::Clipboard {
+                    application: Some("VSCode".to_string()),
+                },
+                kind: RawKind::Text(TextRaw {
+                    content: "function hello() { console.log('Hello, world!'); }".to_string(),
+                    mime_type: Some("text/plain".to_string()),
+                    language: Some("javascript".to_string()),
+                }),
+            },
+        },
+        RawEntry {
+            id: RawId(Uuid::now_v7()),
+            created_at: Utc::now() - chrono::Duration::minutes(15),
+            updated_at: Utc::now() - chrono::Duration::minutes(15),
+            vibe: None,
+            inner: RawEntryInner {
+                source: RawSource::ManualImport,
+                kind: RawKind::Image(ImageRaw {
+                    blob_id: BlobId(Uuid::now_v7()),
+                    width: 1920,
+                    height: 1080,
+                    format: Some("png".to_string()),
+                    thumbnail_blob_id: None,
+                    dominant_color_rgb: Some([120, 150, 200]),
+                }),
+            },
+        },
+    ]
+}
+
+fn create_dummy_documents() -> Vec<Document> {
+    vec![
+        Document {
+            id: BlockId(Uuid::now_v7()),
+            created_at: Utc::now() - chrono::Duration::days(2),
+            updated_at: Utc::now() - chrono::Duration::hours(5),
+            vibe: Some(Vibe {
+                title: Some("Daily Reflection".to_string()),
+                summary: Some("Thoughts about the day's work and learnings".to_string()),
+                importance: Some(0.7),
+                keywords: vec!["reflection".to_string(), "work".to_string()],
+            }),
+            inner: DocumentInner {
+                title: "Daily Reflection - Nov 26".to_string(),
+                blocks: vec![],
+                links: vec![],
+            },
+        },
+        Document {
+            id: BlockId(Uuid::now_v7()),
+            created_at: Utc::now() - chrono::Duration::days(1),
+            updated_at: Utc::now() - chrono::Duration::hours(2),
+            vibe: None,
+            inner: DocumentInner {
+                title: "Project Ideas".to_string(),
+                blocks: vec![],
+                links: vec![],
+            },
+        },
+        Document {
+            id: BlockId(Uuid::now_v7()),
+            created_at: Utc::now() - chrono::Duration::hours(12),
+            updated_at: Utc::now() - chrono::Duration::minutes(30),
+            vibe: Some(Vibe {
+                title: Some("Meeting Notes".to_string()),
+                summary: Some("Discussion about the new feature implementation".to_string()),
+                importance: Some(0.9),
+                keywords: vec!["meeting".to_string(), "feature".to_string()],
+            }),
+            inner: DocumentInner {
+                title: "Team Meeting - Nov 27".to_string(),
+                blocks: vec![],
+                links: vec![],
+            },
+        },
+    ]
 }
