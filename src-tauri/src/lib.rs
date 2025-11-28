@@ -1,6 +1,10 @@
 mod db;
+mod watcher;
+mod settings;
 
 use db::*;
+use watcher::*;
+use settings::*;
 
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 #[tauri::command]
@@ -25,6 +29,7 @@ pub fn run() {
     
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_store::Builder::default().build())
         .plugin(
             tauri_plugin_sql::Builder::default()
                 .add_migrations(
@@ -41,6 +46,12 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             greet,
             toggle_devtools,
+            get_watch_paths_cmd,
+            set_watch_paths_cmd,
+            add_watch_path_cmd,
+            remove_watch_path_cmd,
+            get_enable_watcher_cmd,
+            set_enable_watcher_cmd,
             get_all_raw_entries,
             create_raw_entry,
             update_raw_entry,
@@ -50,7 +61,14 @@ pub fn run() {
             update_cube,
             delete_cube,
         ])
-        .setup(|_app| {
+        .setup(|app| {
+            // Start file watcher for configured path
+            let app_handle = app.handle().clone();
+            tauri::async_runtime::spawn(async move {
+                if let Err(e) = start_file_watcher(app_handle).await {
+                    tracing::error!("Failed to start file watcher: {}", e);
+                }
+            });
             Ok(())
         })
         .run(tauri::generate_context!())
