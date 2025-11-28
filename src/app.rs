@@ -1,87 +1,400 @@
+use chrono::Utc;
 use leptos::prelude::*;
 use miorin_core::prelude::*;
-use chrono::Utc;
+use styled::style;
 use uuid::Uuid;
 
 #[component]
 pub fn App() -> impl IntoView {
+    let app_container_styles = style! {
+        .app-container {
+            display: grid;
+            grid-template-columns: 250px 1fr 300px;
+            height: 100vh;
+            overflow: hidden;
+        }
+    };
+
     // Create dummy raw entries
     let raw_entries = create_dummy_raw_entries();
-    
+
     // Create dummy documents
     let documents = create_dummy_documents();
 
     view! {
+        <>
+            <style>
+                {r#"
+                html, body {
+                    margin: 0;
+                    padding: 0;
+                    height: 100%;
+                    overflow: hidden;
+                }
+                :root {
+                    font-family: Inter, Avenir, Helvetica, Arial, sans-serif;
+                    font-size: 16px;
+                    line-height: 24px;
+                    font-weight: 400;
+                    font-synthesis: none;
+                    text-rendering: optimizeLegibility;
+                    -webkit-font-smoothing: antialiased;
+                    -moz-osx-font-smoothing: grayscale;
+                    -webkit-text-size-adjust: 100%;
+                    --color-text: #0f0f0f;
+                    --color-text-secondary: #666;
+                    --color-text-muted: #999;
+                    --color-bg: #f6f6f6;
+                    --color-panel-bg: #ffffff;
+                    --color-panel-header-bg: #f8f8f8;
+                    --color-workspace-bg: #fafafa;
+                    --color-border: #e0e0e0;
+                    --color-hover: #f5f5f5;
+                    color: var(--color-text);
+                    background-color: var(--color-bg);
+                }
+                @media (prefers-color-scheme: dark) {
+                    :root {
+                        --color-text: #f6f6f6;
+                        --color-text-secondary: #999;
+                        --color-text-muted: #666;
+                        --color-bg: #2f2f2f;
+                        --color-panel-bg: #1e1e1e;
+                        --color-panel-header-bg: #252525;
+                        --color-workspace-bg: #1a1a1a;
+                        --color-border: #3a3a3a;
+                        --color-hover: #2a2a2a;
+                    }
+                }
+                "#}
+            </style>
+            {styled::view! { app_container_styles,
         <div class="app-container">
-            <div class="panel glacier-panel">
+            <GlacierPanel documents=documents />
+            <WorkspacePanel />
+            <StreamPanel raw_entries=raw_entries />
+        </div>
+            }}
+        </>
+    }
+}
+
+#[component]
+fn GlacierPanel(documents: Vec<Document>) -> impl IntoView {
+    let panel_styles = style! {
+        .panel {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            border-right: 1px solid var(--color-border);
+            background-color: var(--color-panel-bg);
+            overflow: hidden;
+        }
+    };
+
+    let panel_header_styles = style! {
+        .panel-header {
+            padding: 1rem;
+            border-bottom: 1px solid var(--color-border);
+            background-color: var(--color-panel-header-bg);
+        }
+        .panel-header h2 {
+            margin: 0;
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--color-text);
+        }
+    };
+
+    let panel_content_styles = style! {
+        .panel-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0.5rem;
+        }
+    };
+
+    let entries_list_styles = style! {
+        .entries-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+    };
+
+    styled::view! { panel_styles,
+        <div class="panel">
+            {styled::view! { panel_header_styles,
                 <div class="panel-header">
                     <h2>"Glacier"</h2>
                 </div>
+            }}
+            {styled::view! { panel_content_styles,
                 <div class="panel-content">
-                    <div class="entries-list">
-                        {documents.into_iter().map(|doc| {
-                            view! { <DocumentEntry document=doc /> }
-                        }).collect::<Vec<_>>()}
-                    </div>
+                    {styled::view! { entries_list_styles,
+                        <div class="entries-list">
+                            {documents.into_iter().map(|doc| {
+                                view! { <DocumentEntry document=doc /> }
+                            }).collect::<Vec<_>>()}
+                        </div>
+                    }}
                 </div>
-            </div>
+            }}
+        </div>
+    }
+}
 
-            <div class="panel workspace-panel">
+#[component]
+fn WorkspacePanel() -> impl IntoView {
+    let workspace_panel_combined = style! {
+        .panel {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            border-right: 1px solid var(--color-border);
+            background-color: var(--color-panel-bg);
+            overflow: hidden;
+        }
+        .workspace-panel {
+            background-color: var(--color-workspace-bg);
+        }
+    };
+
+    let panel_header_styles = style! {
+        .panel-header {
+            padding: 1rem;
+            border-bottom: 1px solid var(--color-border);
+            background-color: var(--color-panel-header-bg);
+        }
+        .panel-header h2 {
+            margin: 0;
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--color-text);
+        }
+    };
+
+    let panel_content_styles = style! {
+        .panel-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0.5rem;
+        }
+    };
+
+    let workspace_editor_styles = style! {
+        .workspace-editor {
+            padding: 2rem;
+            min-height: 100%;
+        }
+    };
+
+    let placeholder_text_styles = style! {
+        .placeholder-text {
+            color: var(--color-text-muted);
+            font-style: italic;
+            text-align: center;
+            margin-top: 3rem;
+        }
+    };
+
+    styled::view! { workspace_panel_combined,
+        <div class="panel workspace-panel">
+            {styled::view! { panel_header_styles,
                 <div class="panel-header">
                     <h2>"Workspace"</h2>
                 </div>
+            }}
+            {styled::view! { panel_content_styles,
                 <div class="panel-content">
-                    <div class="workspace-editor">
-                        <p class="placeholder-text">"Select a cube from Glacier or drag raw material from Stream to start editing..."</p>
-                    </div>
+                    {styled::view! { workspace_editor_styles,
+                        <div class="workspace-editor">
+                            {styled::view! { placeholder_text_styles,
+                                <p class="placeholder-text">"Select a cube from Glacier or drag raw material from Stream to start editing..."</p>
+                            }}
+                        </div>
+                    }}
                 </div>
-            </div>
+            }}
+        </div>
+    }
+}
 
-            <div class="panel stream-panel">
+#[component]
+fn StreamPanel(raw_entries: Vec<RawEntry>) -> impl IntoView {
+    let panel_styles = style! {
+        .panel {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            border-right: 1px solid var(--color-border);
+            background-color: var(--color-panel-bg);
+            overflow: hidden;
+        }
+        .panel:last-child {
+            border-right: none;
+        }
+    };
+
+    let panel_header_styles = style! {
+        .panel-header {
+            padding: 1rem;
+            border-bottom: 1px solid var(--color-border);
+            background-color: var(--color-panel-header-bg);
+        }
+        .panel-header h2 {
+            margin: 0;
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--color-text);
+        }
+    };
+
+    let panel_content_styles = style! {
+        .panel-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0.5rem;
+        }
+    };
+
+    let entries_list_styles = style! {
+        .entries-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+    };
+
+    styled::view! { panel_styles,
+        <div class="panel">
+            {styled::view! { panel_header_styles,
                 <div class="panel-header">
                     <h2>"Stream"</h2>
                 </div>
+            }}
+            {styled::view! { panel_content_styles,
                 <div class="panel-content">
-                    <div class="entries-list">
-                        {raw_entries.into_iter().map(|raw| {
-                            view! { <RawEntry raw=raw /> }
-                        }).collect::<Vec<_>>()}
-                    </div>
+                    {styled::view! { entries_list_styles,
+                        <div class="entries-list">
+                            {raw_entries.into_iter().map(|raw| {
+                                view! { <RawEntry raw=raw /> }
+                            }).collect::<Vec<_>>()}
+                        </div>
+                    }}
                 </div>
-            </div>
+            }}
         </div>
     }
 }
 
 #[component]
 fn DocumentEntry(document: Document) -> impl IntoView {
+    let entry_item_styles = style! {
+        .entry-item {
+            padding: 0.75rem;
+            border: 1px solid var(--color-border);
+            border-radius: 4px;
+            background-color: var(--color-panel-bg);
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .entry-item:hover {
+            background-color: var(--color-hover);
+        }
+    };
+
+    let entry_title_styles = style! {
+        .entry-title {
+            font-weight: 500;
+            color: var(--color-text);
+            margin-bottom: 0.25rem;
+        }
+    };
+
+    let entry_meta_styles = style! {
+        .entry-meta {
+            font-size: 0.75rem;
+            color: var(--color-text-secondary);
+            margin-top: 0.25rem;
+        }
+    };
+
     let title = document.inner.title.clone();
     let created = document.created_at.format("%Y-%m-%d %H:%M").to_string();
-    view! {
+    styled::view! { entry_item_styles,
         <div class="entry-item">
-            <div class="entry-title">{title}</div>
-            <div class="entry-meta">{created}</div>
+            {styled::view! { entry_title_styles,
+                <div class="entry-title">{title}</div>
+            }}
+            {styled::view! { entry_meta_styles,
+                <div class="entry-meta">{created}</div>
+            }}
         </div>
     }
 }
 
 #[component]
 fn RawEntry(raw: RawEntry) -> impl IntoView {
+    let entry_item_styles = style! {
+        .entry-item {
+            padding: 0.75rem;
+            border: 1px solid var(--color-border);
+            border-radius: 4px;
+            background-color: var(--color-panel-bg);
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .entry-item:hover {
+            background-color: var(--color-hover);
+        }
+    };
+
+    let entry_meta_styles = style! {
+        .entry-meta {
+            font-size: 0.75rem;
+            color: var(--color-text-secondary);
+            margin-top: 0.25rem;
+        }
+    };
+
     let source = format_raw_source(&raw.inner.source);
     let created = raw.created_at.format("%Y-%m-%d %H:%M").to_string();
     let kind = raw.inner.kind.clone();
-    view! {
+    styled::view! { entry_item_styles,
         <div class="entry-item raw-entry">
             <RawPreview kind=kind />
-            <div class="entry-meta">{source}</div>
-            <div class="entry-meta">{created}</div>
+            {{
+                let entry_meta_styles2 = style! {
+                    .entry-meta {
+                        font-size: 0.75rem;
+                        color: var(--color-text-secondary);
+                        margin-top: 0.25rem;
+                    }
+                };
+                styled::view! { entry_meta_styles2,
+                    <div class="entry-meta">{source}</div>
+                }
+            }}
+            {styled::view! { entry_meta_styles,
+                <div class="entry-meta">{created}</div>
+            }}
         </div>
     }
 }
 
 #[component]
 fn RawPreview(kind: RawKind) -> impl IntoView {
-    view! {
+    let raw_preview_styles = style! {
+        .raw-preview {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+    };
+
+    styled::view! { raw_preview_styles,
         <div class="raw-preview">
             {match &kind {
                 RawKind::Text(text) => {
@@ -90,18 +403,52 @@ fn RawPreview(kind: RawKind) -> impl IntoView {
                     } else {
                         text.content.clone()
                     };
+                    let raw_icon_styles2 = style! {
+                        .raw-icon {
+                            font-size: 1.25rem;
+                        }
+                    };
+                    let raw_content_styles2 = style! {
+                        .raw-content {
+                            flex: 1;
+                            font-size: 0.875rem;
+                            color: var(--color-text-secondary);
+                            word-break: break-word;
+                        }
+                    };
                     view! {
                         <>
-                            <div class="raw-icon">"📄"</div>
-                            <div class="raw-content">{preview_text}</div>
+                            {styled::view! { raw_icon_styles2,
+                                <div class="raw-icon">"📄"</div>
+                            }}
+                            {styled::view! { raw_content_styles2,
+                                <div class="raw-content">{preview_text}</div>
+                            }}
                         </>
                     }
                 }
                 RawKind::Image(img) => {
+                    let raw_icon_styles3 = style! {
+                        .raw-icon {
+                            font-size: 1.25rem;
+                        }
+                    };
+                    let raw_content_styles3 = style! {
+                        .raw-content {
+                            flex: 1;
+                            font-size: 0.875rem;
+                            color: var(--color-text-secondary);
+                            word-break: break-word;
+                        }
+                    };
                     view! {
                         <>
-                            <div class="raw-icon">"🖼️"</div>
-                            <div class="raw-content">{format!("Image ({}x{})", img.width, img.height)}</div>
+                            {styled::view! { raw_icon_styles3,
+                                <div class="raw-icon">"🖼️"</div>
+                            }}
+                            {styled::view! { raw_content_styles3,
+                                <div class="raw-content">{format!("Image ({}x{})", img.width, img.height)}</div>
+                            }}
                         </>
                     }
                 }
@@ -113,7 +460,13 @@ fn RawPreview(kind: RawKind) -> impl IntoView {
 fn format_raw_source(source: &RawSource) -> String {
     match source {
         RawSource::Clipboard { application } => {
-            format!("Clipboard{}", application.as_ref().map(|a| format!(" ({})", a)).unwrap_or_default())
+            format!(
+                "Clipboard{}",
+                application
+                    .as_ref()
+                    .map(|a| format!(" ({})", a))
+                    .unwrap_or_default()
+            )
         }
         RawSource::FileWatcher { original_path } => {
             format!("File: {}", original_path.display())
