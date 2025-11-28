@@ -1,7 +1,7 @@
 use crate::tauri_api;
 use leptos::prelude::*;
 use leptos_icons::Icon;
-use icondata::{LuPlus, LuTrash2, LuX};
+use icondata::{LuDownload, LuPlus, LuTrash2, LuX};
 use styled::style;
 use wasm_bindgen_futures::spawn_local;
 use wasm_bindgen::JsCast;
@@ -149,6 +149,14 @@ pub fn Settings(close_settings: impl Fn() + 'static) -> impl IntoView {
         .button-danger:hover {
             background-color: var(--color-danger-hover, #c82333);
         }
+        .button-import {
+            background-color: var(--color-primary, #007bff);
+            color: white;
+            padding: 8px;
+        }
+        .button-import:hover {
+            background-color: var(--color-primary-hover, #0056b3);
+        }
         .button-secondary {
             background-color: var(--color-secondary, #6c757d);
             color: white;
@@ -196,6 +204,34 @@ pub fn Settings(close_settings: impl Fn() + 'static) -> impl IntoView {
             border-radius: 4px;
             font-size: 13px;
         }
+        .progress-container {
+            margin-top: 8px;
+            padding: 8px 12px;
+            background-color: var(--color-bg-secondary, #f8f9fa);
+            border: 1px solid var(--color-border, #dee2e6);
+            border-radius: 4px;
+        }
+        .progress-bar-container {
+            width: 100%;
+            height: 8px;
+            background-color: var(--color-border, #dee2e6);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 8px;
+            position: relative;
+        }
+        .progress-bar {
+            height: 100%;
+            width: 100%;
+            background-color: var(--color-primary, #007bff);
+            border-radius: 4px;
+            opacity: 0.8;
+        }
+        .progress-text {
+            font-size: 13px;
+            color: var(--color-text-secondary, #6c757d);
+            margin-bottom: 4px;
+        }
     };
 
     // Watch paths state
@@ -207,6 +243,9 @@ pub fn Settings(close_settings: impl Fn() + 'static) -> impl IntoView {
 
     // Error message state
     let error_message = RwSignal::new(Option::<String>::None);
+
+    // Import progress state (path being imported, or None if not importing)
+    let importing_path = RwSignal::new(Option::<String>::None);
 
     // Load settings on mount
     spawn_local({
@@ -328,6 +367,40 @@ pub fn Settings(close_settings: impl Fn() + 'static) -> impl IntoView {
         });
     };
 
+    // Import files handler
+    let import_files = {
+        let importing_path_clone = importing_path.clone();
+        let error_message_clone = error_message.clone();
+        move |path: String| {
+            let importing_path_inner = importing_path_clone.clone();
+            let error_message_inner = error_message_clone.clone();
+            spawn_local(async move {
+                error_message_inner.set(None);
+                importing_path_inner.set(Some(path.clone()));
+                match tauri_api::import_files_from_path(path.clone()).await {
+                    | Ok(count) => {
+                        web_sys::console::log_1(
+                            &format!("Successfully imported {} files from {}", count, path).into(),
+                        );
+                        importing_path_inner.set(None);
+                        if count > 0 {
+                            error_message_inner.set(Some(format!("Successfully imported {} files", count)));
+                        } else {
+                            error_message_inner.set(Some("No files found to import".to_string()));
+                        }
+                    }
+                    | Err(e) => {
+                        importing_path_inner.set(None);
+                        error_message_inner.set(Some(format!("Failed to import files: {}", e)));
+                        web_sys::console::error_1(
+                            &format!("Failed to import files from path: {}", e).into(),
+                        );
+                    }
+                }
+            });
+        }
+    };
+
     let close_button_styles = style! {
         .close-button {
             position: fixed;
@@ -376,6 +449,7 @@ pub fn Settings(close_settings: impl Fn() + 'static) -> impl IntoView {
                                 let enabled = config.enabled;
                                 let path_for_toggle = path.clone();
                                 let path_for_remove = path.clone();
+                                let path_for_import = path.clone();
                                 view! {
                                     <li class="path-item">
                                         <div class="toggle-group" style="flex: 1; margin-right: 10px;">
@@ -389,12 +463,20 @@ pub fn Settings(close_settings: impl Fn() + 'static) -> impl IntoView {
                                             </label>
                                             <span class="path-text">{path}</span>
                                         </div>
-                                        <button
-                                            class="button button-danger"
-                                            on:click=move |_| remove_path(path_for_remove.clone())
-                                        >
-                                            <Icon icon=LuTrash2 width="16" height="16" />
-                                        </button>
+                                        <div style="display: flex; gap: 8px;">
+                                            <button
+                                                class="button button-import"
+                                                on:click=move |_| import_files(path_for_import.clone())
+                                            >
+                                                <Icon icon=LuDownload width="16" height="16" />
+                                            </button>
+                                            <button
+                                                class="button button-danger"
+                                                on:click=move |_| remove_path(path_for_remove.clone())
+                                            >
+                                                <Icon icon=LuTrash2 width="16" height="16" />
+                                            </button>
+                                        </div>
                                     </li>
                                 }
                             }
@@ -424,13 +506,35 @@ pub fn Settings(close_settings: impl Fn() + 'static) -> impl IntoView {
                         </button>
                     </div>
                     {move || {
-                        error_message.get().map(|msg| {
+                        let importing = importing_path.get();
+                        if let Some(path) = importing {
                             view! {
-                                <div class="error-message">
-                                    {msg}
+                                <div class="progress-container">
+                                    <div class="progress-text">
+                                        {format!("Importing files from {}...", path)}
+                                    </div>
+                                    <div class="progress-bar-container">
+                                        <div class="progress-bar" style="width: 100%; animation: pulse 1.5s ease-in-out infinite;"></div>
+                                    </div>
+                                    <style>
+                                        {r#"
+                                        @keyframes pulse {
+                                            0%, 100% { opacity: 0.6; }
+                                            50% { opacity: 1; }
+                                        }
+                                        "#}
+                                    </style>
                                 </div>
-                            }
-                        })
+                            }.into_any()
+                        } else {
+                            error_message.get().map(|msg| {
+                                view! {
+                                    <div class="error-message">
+                                        {msg}
+                                    </div>
+                                }.into_any()
+                            }).unwrap_or_else(|| view! {}.into_any())
+                        }
                     }}
                 </div>
             </div>

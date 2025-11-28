@@ -44,6 +44,7 @@ pub fn run() {
             add_watch_path_cmd,
             remove_watch_path_cmd,
             toggle_watch_path_enabled_cmd,
+            import_files_from_path_cmd,
             get_all_raw_entries,
             create_raw_entry,
             update_raw_entry,

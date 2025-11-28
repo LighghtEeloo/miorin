@@ -149,7 +149,7 @@ async fn handle_file_event(app: &AppHandle, file_path: &Path) -> Result<(), Stri
 }
 
 /// Check if a file is an image
-fn is_image_file(path: &Path) -> bool {
+pub fn is_image_file(path: &Path) -> bool {
     if let Some(ext) = path.extension() {
         let ext_lower = ext.to_string_lossy().to_lowercase();
         matches!(
@@ -162,7 +162,7 @@ fn is_image_file(path: &Path) -> bool {
 }
 
 /// Get image dimensions and format
-fn get_image_info(path: &Path) -> Result<(u32, u32, String), String> {
+pub fn get_image_info(path: &Path) -> Result<(u32, u32, String), String> {
     let img = image::open(path).map_err(|e| format!("Failed to open image: {}", e))?;
 
     let (width, height) = (img.width(), img.height());
@@ -172,7 +172,7 @@ fn get_image_info(path: &Path) -> Result<(u32, u32, String), String> {
 }
 
 /// Infer MIME type from file extension
-fn infer_mime_type(path: &Path) -> Option<String> {
+pub fn infer_mime_type(path: &Path) -> Option<String> {
     path.extension()
         .and_then(|ext| ext.to_str())
         .map(|ext| {

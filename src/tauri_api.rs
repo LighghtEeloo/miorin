@@ -195,3 +195,8 @@ pub async fn toggle_watch_path_enabled(path: String, enabled: bool) -> Result<()
     )
     .await
 }
+
+/// Import all existing files from a watch path as raw entries
+pub async fn import_files_from_path(path: String) -> Result<u32, String> {
+    invoke_tauri("import_files_from_path_cmd", serde_json::json!({ "path": path })).await
+}

@@ -1,6 +1,8 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use tauri::AppHandle;
 use tracing;
+use miorin_core::prelude::*;
+use crate::db::create_raw_entry;
 
 const SETTINGS_STORE_NAME: &str = "settings.json";
 const WATCH_PATHS_KEY: &str = "watch_paths";
@@ -169,5 +171,110 @@ pub async fn toggle_watch_path_enabled_cmd(
         }
     }
     set_watch_path_configs(&app, configs).await?;
+    Ok(())
+}
+
+/// Import all existing files from a watch path as raw entries
+#[tauri::command]
+pub async fn import_files_from_path_cmd(app: AppHandle, path: String) -> Result<u32, String> {
+    // Validate and canonicalize the path
+    let canonical_path = validate_and_canonicalize_path(&path)?;
+    
+    tracing::info!(path = %canonical_path.display(), "Importing files from path");
+    
+    // Read directory entries
+    let entries = std::fs::read_dir(&canonical_path)
+        .map_err(|e| format!("Failed to read directory '{}': {}", canonical_path.display(), e))?;
+    
+    let mut imported_count = 0;
+    let mut errors = Vec::new();
+    
+    // Process each entry
+    for entry in entries {
+        let entry = entry.map_err(|e| format!("Failed to read directory entry: {}", e))?;
+        let file_path = entry.path();
+        
+        // Skip if it's a directory
+        if file_path.is_dir() {
+            continue;
+        }
+        
+        // Skip if it's not a file
+        if !file_path.is_file() {
+            continue;
+        }
+        
+        // Process the file
+        match import_file(&app, &file_path).await {
+            Ok(_) => {
+                imported_count += 1;
+                tracing::debug!(file = %file_path.display(), "Imported file");
+            }
+            Err(e) => {
+                let error_msg = format!("Failed to import file '{}': {}", file_path.display(), e);
+                tracing::warn!(%error_msg);
+                errors.push(error_msg);
+            }
+        }
+    }
+    
+    if !errors.is_empty() {
+        tracing::warn!(
+            imported_count = imported_count,
+            error_count = errors.len(),
+            "Some files failed to import"
+        );
+    }
+    
+    tracing::info!(
+        path = %canonical_path.display(),
+        imported_count = imported_count,
+        "Finished importing files"
+    );
+    
+    Ok(imported_count)
+}
+
+/// Import a single file as a raw entry
+async fn import_file(app: &AppHandle, file_path: &Path) -> Result<(), String> {
+    use crate::watcher::{is_image_file, get_image_info, infer_mime_type};
+    
+    // Determine file type and read content
+    let content = if is_image_file(file_path) {
+        // For images, create ImageRaw
+        let (width, height, format) = get_image_info(file_path)?;
+        let blob_id = BlobId(uuid::Uuid::now_v7());
+        
+        // TODO: Actually store the image blob and generate thumbnail
+        // For now, just create the entry with metadata
+        
+        RawContent::Image(ImageRaw {
+            blob_id,
+            width,
+            height,
+            format: Some(format),
+            thumbnail_blob_id: None,
+            dominant_color_rgb: None,
+        })
+    } else {
+        // For text files, read the content
+        let file_content = std::fs::read_to_string(file_path)
+            .map_err(|e| format!("Failed to read file: {}", e))?;
+        
+        let mime_type = infer_mime_type(file_path);
+        let language = None; // Could be inferred later
+        
+        RawContent::Text(TextRaw { content: file_content, mime_type, language })
+    };
+    
+    // Create Raw entry
+    let inner = RawInner {
+        source: RawSource::FileWatcher { original_path: file_path.to_path_buf() },
+        content,
+    };
+    
+    // Save to database
+    create_raw_entry(app.clone(), inner).await?;
+    
     Ok(())
 }
