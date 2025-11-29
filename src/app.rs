@@ -2,6 +2,7 @@ use crate::panel;
 use crate::card;
 use crate::tauri_api;
 use crate::button;
+use crate::color::ColorVariant;
 use leptos::prelude::*;
 use leptos_icons::Icon;
 use icondata::{LuPlus, LuSettings};
@@ -237,7 +238,7 @@ fn GlacierPanel(
             header_actions=view! {
                 <button::ActionButton
                     icon=view! { <Icon icon=LuPlus width="12" height="12" /> }
-                    color_variant="primary"
+                    color_variant=ColorVariant::Primary
                     on_click=create_cube_action
                 />
             }.into_any()
@@ -289,7 +290,7 @@ fn StreamPanel(
             header_actions=view! {
                 <button::ActionButton
                     icon=view! { <Icon icon=LuSettings width="12" height="12" /> }
-                    color_variant="secondary"
+                    color_variant=ColorVariant::Secondary
                     on_click=open_settings
                 />
             }.into_any()

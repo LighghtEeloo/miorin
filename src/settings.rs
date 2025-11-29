@@ -1,5 +1,6 @@
 use crate::tauri_api;
 use crate::button;
+use crate::color::ColorVariant;
 use leptos::prelude::*;
 use leptos_icons::Icon;
 use icondata::{LuDownload, LuEye, LuEyeOff, LuFolderOpen, LuPlus, LuRefreshCw, LuTrash2, LuX};
@@ -59,7 +60,7 @@ fn WatchPathItem(
                         view! {
                             <button::ActionButton
                                 icon=view! { <Icon icon=LuDownload width="12" height="12" /> }
-                                color_variant="primary"
+                                color_variant=ColorVariant::Primary
                                 on_click=move |_| on_import(path_for_action.clone())
                             />
                         }.into_any()
@@ -68,7 +69,7 @@ fn WatchPathItem(
                         view! {
                             <button::ActionButton
                                 icon=view! { <Icon icon=LuTrash2 width="12" height="12" /> }
-                                color_variant="danger"
+                                color_variant=ColorVariant::Danger
                                 on_click=move |_| on_remove(path_for_action.clone())
                             />
                         }.into_any()
@@ -124,13 +125,13 @@ fn AddPathInput(
         <div class="flex gap-2 mt-2.5">
             <button::InterfaceButton
                 icon=view! { <Icon icon=LuPlus width="16" height="16" /> }
-                color_variant="primary"
+                color_variant=ColorVariant::Primary
                 on_click=move |_| on_add_clone()
                 class="pl-2"
             />
             <button::InterfaceButton
                 icon=view! { <Icon icon=LuFolderOpen width="16" height="16" /> }
-                color_variant="secondary"
+                color_variant=ColorVariant::Secondary
                 on_click=move |_| {
                     let new_path_clone = new_path.clone();
                     spawn_local(async move {
@@ -179,7 +180,7 @@ fn CloseButton(close_settings: impl Fn() + 'static) -> impl IntoView {
         <div class="fixed top-5 left-5 z-[1001]">
             <button::InterfaceButton
                 icon=view! { <Icon icon=LuX width="20" height="20" /> }
-                color_variant="secondary"
+                color_variant=ColorVariant::Secondary
                 on_click=move |_| close_settings()
             />
         </div>
