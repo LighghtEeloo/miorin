@@ -415,6 +415,48 @@ pub fn Settings(
             background-color: var(--color-text-secondary, #6c757d);
             cursor: not-allowed;
         }
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 44px;
+            height: 24px;
+        }
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: var(--color-toggle-bg, #ccc);
+            transition: 0.3s;
+            border-radius: 24px;
+        }
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: 0.3s;
+            border-radius: 50%;
+        }
+        .toggle-switch input:checked + .toggle-slider {
+            background-color: var(--color-primary, #007bff);
+        }
+        .toggle-switch input:checked + .toggle-slider:before {
+            transform: translateX(20px);
+        }
+        .toggle-switch input:focus + .toggle-slider {
+            box-shadow: 0 0 1px var(--color-primary, #007bff);
+        }
     };
 
     // Watch paths state
@@ -766,6 +808,25 @@ pub fn Settings(
                                 >
                                     <Icon icon=LuFolderOpen width="16" height="16" />
                                     "Reveal Data Folder on Device"
+                                </button>
+                            }
+                        }}
+                        {move || {
+                            view! {
+                                <button
+                                    class="debug-button"
+                                    on:click=move |_| {
+                                        spawn_local(async move {
+                                            if let Err(e) = tauri_api::toggle_devtools().await {
+                                                web_sys::console::error_1(
+                                                    &format!("Failed to open devtools: {}", e).into(),
+                                                );
+                                            }
+                                        });
+                                    }
+                                >
+                                    <Icon icon=LuEye width="16" height="16" />
+                                    "Open Developer Console"
                                 </button>
                             }
                         }}

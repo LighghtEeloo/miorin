@@ -220,7 +220,7 @@ pub async fn store_blob_from_file(blob_id: String, source_path: String) -> Resul
 
 /// Get blob data
 pub async fn get_blob(blob_id: String) -> Result<Vec<u8>, String> {
-    invoke_tauri("get_blob_cmd", serde_json::json!({ "blob_id": blob_id })).await
+    invoke_tauri("get_blob_cmd", serde_json::json!({ "blobId": blob_id })).await
 }
 
 /// Check if a blob exists
@@ -246,4 +246,29 @@ pub async fn get_all_store_data() -> Result<serde_json::Value, String> {
 /// Reveal the app data folder in the file manager
 pub async fn reveal_data_folder() -> Result<String, String> {
     invoke_tauri("reveal_data_folder_cmd", serde_json::json!({})).await
+}
+
+/// Toggle developer console visibility
+pub async fn toggle_devtools() -> Result<(), String> {
+    invoke_tauri("toggle_devtools", serde_json::json!({})).await
+}
+
+/// Set developer console visibility
+pub async fn set_devtools_visible(visible: bool) -> Result<(), String> {
+    invoke_tauri("set_devtools_visible", serde_json::json!({ "visible": visible })).await
+}
+
+/// Check if developer console is open
+pub async fn is_devtools_open() -> Result<bool, String> {
+    invoke_tauri("is_devtools_open", serde_json::json!({})).await
+}
+
+/// Get devtools visibility setting
+pub async fn get_devtools_visible_setting() -> Result<bool, String> {
+    invoke_tauri("get_devtools_visible_cmd", serde_json::json!({})).await
+}
+
+/// Set devtools visibility setting
+pub async fn set_devtools_visible_setting(visible: bool) -> Result<(), String> {
+    invoke_tauri("set_devtools_visible_cmd", serde_json::json!({ "visible": visible })).await
 }

@@ -117,14 +117,16 @@ fn GlacierPanel(cubes: RwSignal<Vec<Cube>>) -> impl IntoView {
                     }],
                 },
             };
-            
+
             match tauri_api::create_cube(true, CubeContent::Paragraph(dummy_paragraph)).await {
                 | Ok(_) => {
                     // Reload cubes
                     match tauri_api::get_all_cubes().await {
                         | Ok(cubes_data) => cubes_signal.set(cubes_data),
                         | Err(e) => {
-                            web_sys::console::error_1(&format!("Failed to reload cubes: {}", e).into());
+                            web_sys::console::error_1(
+                                &format!("Failed to reload cubes: {}", e).into(),
+                            );
                         }
                     }
                 }
@@ -134,12 +136,12 @@ fn GlacierPanel(cubes: RwSignal<Vec<Cube>>) -> impl IntoView {
             }
         });
     };
-    
+
     view! {
-        <panel::Panel 
+        <panel::Panel
             title="Glacier"
             header_actions=view! {
-                <button 
+                <button
                     style="padding: 6px; background: var(--color-primary, #007bff); color: white; border: none; border-radius: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; min-width: 28px; transition: background-color 0.2s;"
                     on:click=create_cube_action
                 >
@@ -343,41 +345,42 @@ fn RawEntry(raw: Raw) -> impl IntoView {
         }
     };
 
-    let entry_meta_styles = style! {
-        .entry-meta {
-            font-size: 0.75rem;
-            color: var(--color-text-secondary);
-            margin-top: 0.25rem;
-        }
-    };
-
     let source = format_raw_source(&raw.inner.source);
     let created = raw.created_at.format("%Y-%m-%d %H:%M").to_string();
-    let kind = raw.inner.content.clone();
+    let content = raw.inner.content.clone();
     styled::view! { entry_item_styles,
         <div class="entry-item raw-entry">
-            <RawPreview kind=kind />
-            {{
-                let entry_meta_styles2 = style! {
+            <RawPreview content=content />
+            {
+                let source_styles = style! {
                     .entry-meta {
                         font-size: 0.75rem;
                         color: var(--color-text-secondary);
                         margin-top: 0.25rem;
                     }
                 };
-                styled::view! { entry_meta_styles2,
+                styled::view! { source_styles,
                     <div class="entry-meta">{source}</div>
                 }
-            }}
-            {styled::view! { entry_meta_styles,
-                <div class="entry-meta">{created}</div>
-            }}
+            }
+            {
+                let created_styles = style! {
+                    .entry-meta {
+                        font-size: 0.75rem;
+                        color: var(--color-text-secondary);
+                        margin-top: 0.25rem;
+                    }
+                };
+                styled::view! { created_styles,
+                    <div class="entry-meta">{created}</div>
+                }
+            }
         </div>
     }
 }
 
 #[component]
-fn RawPreview(kind: RawContent) -> impl IntoView {
+fn RawPreview(content: RawContent) -> impl IntoView {
     let raw_preview_styles = style! {
         .raw-preview {
             display: flex;
@@ -389,7 +392,7 @@ fn RawPreview(kind: RawContent) -> impl IntoView {
 
     styled::view! { raw_preview_styles,
         <div class="raw-preview">
-            {match &kind {
+            {match &content {
                 RawContent::Text(text) => {
                     let preview_text = if text.content.len() > 50 {
                         format!("{}...", &text.content[..50])
@@ -418,12 +421,86 @@ fn RawPreview(kind: RawContent) -> impl IntoView {
                                 <div class="raw-content">{preview_text}</div>
                             }}
                         </>
-                    }
+                    }.into_any()
                 }
                 RawContent::Image(img) => {
+                    // Load thumbnail if available
+                    let thumbnail_url = RwSignal::new(Option::<String>::None);
+                    let thumbnail_url_clone = thumbnail_url.clone();
+                    let img_clone = img.clone();
+
+                    if let Some(thumb_blob_id) = img.thumbnail_blob_id {
+                        web_sys::console::log_1(
+                            &format!("Thumbnail exists for image: {}", thumb_blob_id.0).into(),
+                        );
+                        spawn_local(async move {
+                            match tauri_api::get_blob(thumb_blob_id.0.to_string()).await {
+                                Ok(data) => {
+                                    // Convert blob data to base64 data URL using web APIs
+                                    // Convert Vec<u8> to binary string for btoa
+                                    let binary_string: String = data.iter().map(|&b| b as char).collect();
+                                    let window = web_sys::window().unwrap();
+                                    let base64 = match js_sys::Reflect::get(&window, &wasm_bindgen::JsValue::from_str("btoa")) {
+                                        Ok(btoa_fn) => {
+                                            match js_sys::Function::from(btoa_fn)
+                                                .call1(&wasm_bindgen::JsValue::NULL, &wasm_bindgen::JsValue::from_str(&binary_string))
+                                            {
+                                                Ok(result) => result.as_string().unwrap_or_default(),
+                                                Err(_) => String::new(),
+                                            }
+                                        }
+                                        Err(_) => String::new(),
+                                    };
+
+                                    if !base64.is_empty() {
+                                        let format = img_clone.format.as_deref().unwrap_or("jpeg");
+                                        let mime_type = match format {
+                                            "png" => "image/png",
+                                            "jpeg" | "jpg" => "image/jpeg",
+                                            "gif" => "image/gif",
+                                            "webp" => "image/webp",
+                                            _ => "image/jpeg",
+                                        };
+                                        let data_url = format!("data:{};base64,{}", mime_type, base64);
+                                        thumbnail_url_clone.set(Some(data_url));
+                                    }
+                                }
+                                Err(_) => {
+                                    // Fallback to emoji on error
+                                }
+                            }
+                        });
+                    } else {
+                        web_sys::console::log_1(
+                            &"Thumbnail does not exist for image, using fallback emoji".into(),
+                        );
+                    }
+
                     let raw_icon_styles3 = style! {
                         .raw-icon {
                             font-size: 1.25rem;
+                            width: 1.25rem;
+                            height: 1.25rem;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            flex-shrink: 0;
+                        }
+                        .raw-thumbnail {
+                            width: 1.25rem;
+                            height: 1.25rem;
+                            object-fit: cover;
+                            border-radius: 2px;
+                            flex-shrink: 0;
+                        }
+                        .raw-thumbnail.hidden {
+                            display: none;
+                        }
+                        .raw-fallback {
+                            font-size: 1.25rem;
+                        }
+                        .raw-fallback.hidden {
+                            display: none;
                         }
                     };
                     let raw_content_styles3 = style! {
@@ -434,16 +511,25 @@ fn RawPreview(kind: RawContent) -> impl IntoView {
                             word-break: break-word;
                         }
                     };
+
                     view! {
                         <>
                             {styled::view! { raw_icon_styles3,
-                                <div class="raw-icon">"🖼️"</div>
+                                <div class="raw-icon">
+                                    {move || {
+                                        if let Some(url) = thumbnail_url.get() {
+                                            view! { <img class="raw-thumbnail" src=url alt="Thumbnail" /> }.into_any()
+                                        } else {
+                                            view! { <span>"🖼️"</span> }.into_any()
+                                        }
+                                    }}
+                                </div>
                             }}
                             {styled::view! { raw_content_styles3,
                                 <div class="raw-content">{format!("Image ({}x{})", img.width, img.height)}</div>
                             }}
                         </>
-                    }
+                    }.into_any()
                 }
             }}
         </div>

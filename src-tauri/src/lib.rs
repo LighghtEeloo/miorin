@@ -11,7 +11,25 @@ use tauri::AppHandle;
 
 #[tauri::command]
 fn toggle_devtools(window: tauri::WebviewWindow) {
-    window.open_devtools();
+    if window.is_devtools_open() {
+        window.close_devtools();
+    } else {
+        window.open_devtools();
+    }
+}
+
+#[tauri::command]
+fn set_devtools_visible(window: tauri::WebviewWindow, visible: bool) {
+    if visible {
+        window.open_devtools();
+    } else {
+        window.close_devtools();
+    }
+}
+
+#[tauri::command]
+fn is_devtools_open(window: tauri::WebviewWindow) -> bool {
+    window.is_devtools_open()
 }
 
 /// Reveal the app data folder in the file manager
@@ -102,6 +120,10 @@ pub fn run() {
         )
         .invoke_handler(tauri::generate_handler![
             toggle_devtools,
+            set_devtools_visible,
+            is_devtools_open,
+            get_devtools_visible_cmd,
+            set_devtools_visible_cmd,
             get_watch_paths_cmd,
             set_watch_paths_cmd,
             add_watch_path_cmd,

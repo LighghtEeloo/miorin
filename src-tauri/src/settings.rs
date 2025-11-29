@@ -7,6 +7,7 @@ use crate::blob::{store_blob_from_file, generate_thumbnail};
 
 const SETTINGS_STORE_NAME: &str = "settings.json";
 const WATCH_PATHS_KEY: &str = "watch_paths";
+const DEVTOOLS_VISIBLE_KEY: &str = "devtools_visible";
 
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
 pub struct WatchPathConfig {
@@ -117,6 +118,40 @@ pub async fn set_watch_paths_cmd(
     app: AppHandle, configs: Vec<WatchPathConfig>,
 ) -> Result<(), String> {
     set_watch_path_configs(&app, configs).await
+}
+
+/// Get devtools visibility setting
+pub async fn get_devtools_visible(app: &AppHandle) -> Result<bool, String> {
+    let store = get_store(app).await?;
+    
+    if let Some(value) = store.get(DEVTOOLS_VISIBLE_KEY) {
+        if let Some(bool_val) = value.as_bool() {
+            return Ok(bool_val);
+        }
+    }
+    
+    // Default to false if not set
+    Ok(false)
+}
+
+/// Set devtools visibility setting
+pub async fn set_devtools_visible(app: &AppHandle, visible: bool) -> Result<(), String> {
+    let store = get_store(app).await?;
+    store.set(DEVTOOLS_VISIBLE_KEY.to_string(), serde_json::json!(visible));
+    store.save().map_err(|e| format!("Failed to save settings: {}", e))?;
+    Ok(())
+}
+
+/// Get devtools visibility setting (Tauri command)
+#[tauri::command]
+pub async fn get_devtools_visible_cmd(app: AppHandle) -> Result<bool, String> {
+    get_devtools_visible(&app).await
+}
+
+/// Set devtools visibility setting (Tauri command)
+#[tauri::command]
+pub async fn set_devtools_visible_cmd(app: AppHandle, visible: bool) -> Result<(), String> {
+    set_devtools_visible(&app, visible).await
 }
 
 /// Expand shell variables and tilde in a path string
