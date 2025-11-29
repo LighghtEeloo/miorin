@@ -7,7 +7,7 @@ use sqlx::Row;
 use tracing;
 
 /// Get the database connection pool
-async fn get_db_pool(app: &AppHandle) -> Result<SqlitePool, String> {
+pub(crate) async fn get_db_pool(app: &AppHandle) -> Result<SqlitePool, String> {
     use tauri::Manager;
     tracing::debug!("Getting app data directory");
     let app_dir = app.path().app_data_dir().map_err(|e| {
@@ -164,6 +164,99 @@ pub async fn get_all_raw_entries(app: AppHandle) -> Result<Vec<Raw>, String> {
     Ok(entries)
 }
 
+/// Find existing raw entry by source path and created date
+pub(crate) async fn find_duplicate_raw_entry(
+    pool: &SqlitePool,
+    source: &RawSource,
+    created_at: &DateTime<Utc>,
+) -> Result<Option<Raw>, String> {
+    // Only check for FileWatcher sources with paths
+    let source_path = if let RawSource::FileWatcher { original_path } = source {
+        original_path
+    } else {
+        // For non-file sources, no deduplication
+        return Ok(None);
+    };
+
+    // Get all raw entries and check for matching source paths and created dates
+    let rows = sqlx::query(
+        "SELECT id, created_at, updated_at, vibe_json, source_json, content_json FROM raw_entries"
+    )
+    .fetch_all(pool)
+    .await
+    .map_err(|e| format!("Query error: {}", e))?;
+
+    let created_at_str = serde_json::to_string(created_at)
+        .map_err(|e| format!("Failed to serialize created_at: {}", e))?;
+
+    for row in rows {
+        let row_created_at_str: String = row.get("created_at");
+        
+        // Check if created_at matches
+        if row_created_at_str != created_at_str {
+            continue;
+        }
+
+        let source_json: String = row.get("source_json");
+        let existing_source: RawSource = serde_json::from_str(&source_json)
+            .map_err(|e| format!("Failed to parse source: {}", e))?;
+
+        // Check if this is a FileWatcher with the same path
+        if let RawSource::FileWatcher { original_path: existing_path } = &existing_source {
+            // Compare paths (normalize them for comparison)
+            let existing_normalized = existing_path.canonicalize()
+                .unwrap_or_else(|_| existing_path.clone());
+            let new_normalized = source_path.canonicalize()
+                .unwrap_or_else(|_| source_path.clone());
+            
+            // Compare normalized paths
+            if existing_normalized == new_normalized {
+                // Found a duplicate, return the existing entry
+                let id_str: String = row.get("id");
+                let id = RawId(uuid::Uuid::parse_str(&id_str).map_err(|e| format!("Invalid UUID: {}", e))?);
+
+                let created_at: DateTime<Utc> = serde_json::from_str(&row_created_at_str)
+                    .map_err(|e| format!("Failed to parse created_at: {}", e))?;
+
+                let updated_at_str: String = row.get("updated_at");
+                let updated_at: DateTime<Utc> = serde_json::from_str(&updated_at_str)
+                    .map_err(|e| format!("Failed to parse updated_at: {}", e))?;
+
+                let vibe: Option<Vibe> =
+                    if let Some(vibe_json) = row.try_get::<Option<String>, _>("vibe_json").ok().flatten() {
+                        if vibe_json == "null" || vibe_json.is_empty() {
+                            None
+                        } else {
+                            Some(
+                                serde_json::from_str(&vibe_json)
+                                    .map_err(|e| format!("Failed to parse vibe: {}", e))?,
+                            )
+                        }
+                    } else {
+                        None
+                    };
+
+                let content_json: String = row.get("content_json");
+                let content: RawContent = serde_json::from_str(&content_json)
+                    .map_err(|e| format!("Failed to parse content: {}", e))?;
+
+                return Ok(Some(Raw {
+                    id,
+                    created_at,
+                    updated_at,
+                    vibe,
+                    inner: RawInner {
+                        source: existing_source,
+                        content,
+                    },
+                }));
+            }
+        }
+    }
+
+    Ok(None)
+}
+
 /// Create a new raw entry
 #[tauri::command]
 pub async fn create_raw_entry(
@@ -179,8 +272,6 @@ pub async fn create_raw_entry(
     })?;
     tracing::debug!("Got database pool");
 
-    let id = RawId(uuid::Uuid::now_v7());
-    
     // Use provided timestamps or fall back to current time
     let created_at = if let Some(created_at_str) = created_at {
         serde_json::from_str(&created_at_str)
@@ -195,6 +286,17 @@ pub async fn create_raw_entry(
     } else {
         created_at // Use created_at as default for updated_at
     };
+
+    // Check for duplicate entry with same source path and created date
+    if let Some(existing) = find_duplicate_raw_entry(&pool, &inner.source, &created_at).await? {
+        tracing::info!(
+            raw_entry_id = %existing.id.0,
+            "Raw entry with same source path and created date already exists, returning existing entry"
+        );
+        return Ok(existing);
+    }
+
+    let id = RawId(uuid::Uuid::now_v7());
 
     let raw = Raw { id, created_at, updated_at, vibe: None, inner };
 

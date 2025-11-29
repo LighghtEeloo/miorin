@@ -318,6 +318,34 @@ pub async fn import_files_from_path_cmd(app: AppHandle, path: String) -> Result<
 async fn import_file(app: &AppHandle, file_path: &Path) -> Result<(), String> {
     use crate::watcher::{is_image_file, get_image_info, infer_mime_type};
     
+    // Get file metadata for timestamps first (before creating blob)
+    let file_metadata = std::fs::metadata(file_path)
+        .map_err(|e| format!("Failed to get file metadata: {}", e))?;
+    
+    // Use file modification time, or creation time if modification time is not available
+    let file_time = file_metadata
+        .modified()
+        .or_else(|_| file_metadata.created())
+        .map_err(|e| format!("Failed to get file time: {}", e))?;
+    
+    let file_datetime = chrono::DateTime::<chrono::Utc>::from(file_time);
+    
+    // Check for duplicate before creating blob
+    use crate::db::find_duplicate_raw_entry;
+    use crate::db::get_db_pool;
+    let pool = get_db_pool(app).await
+        .map_err(|e| format!("Failed to get database pool: {}", e))?;
+    
+    let source = RawSource::FileWatcher { original_path: file_path.to_path_buf() };
+    if let Some(existing) = find_duplicate_raw_entry(&pool, &source, &file_datetime).await? {
+        tracing::info!(
+            raw_entry_id = %existing.id.0,
+            file_path = ?file_path,
+            "Raw entry with same source path and created date already exists, skipping"
+        );
+        return Ok(());
+    }
+    
     // Determine file type and read content
     let content = if is_image_file(file_path) {
         // For images, create ImageRaw
@@ -374,17 +402,6 @@ async fn import_file(app: &AppHandle, file_path: &Path) -> Result<(), String> {
         RawContent::Text(TextRaw { content: file_content, mime_type, language })
     };
     
-    // Get file metadata for timestamps
-    let file_metadata = std::fs::metadata(file_path)
-        .map_err(|e| format!("Failed to get file metadata: {}", e))?;
-    
-    // Use file modification time, or creation time if modification time is not available
-    let file_time = file_metadata
-        .modified()
-        .or_else(|_| file_metadata.created())
-        .map_err(|e| format!("Failed to get file time: {}", e))?;
-    
-    let file_datetime = chrono::DateTime::<chrono::Utc>::from(file_time);
     let created_at_str = serde_json::to_string(&file_datetime)
         .map_err(|e| format!("Failed to serialize file timestamp: {}", e))?;
     
