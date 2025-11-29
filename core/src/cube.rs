@@ -23,24 +23,13 @@ pub enum CubeContent {
     Meta,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct GraphId(pub Uuid);
-
-pub type Graph = Meta<GraphId, GraphInner>;
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct GraphInner {
+pub struct Graph {
     /// Flat list of cubes; use parent/index for structure.
     pub cubes: Vec<Cube>,
-
     /// Graph edges between cubes.
     pub links: Vec<Link>,
 }
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct PreOrderId(pub Uuid);
-
-pub type PreOrder = Meta<PreOrderId, PreOrderInner>;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct PreOrderEdge {
@@ -49,14 +38,9 @@ pub struct PreOrderEdge {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PreOrderInner {
+pub struct PreOrder {
     pub dag: daggy::Dag<CubeId, PreOrderEdge>,
 }
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct OrderId(pub Uuid);
-
-pub type Order = Meta<OrderId, OrderInner>;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum OrderStyle {
@@ -75,18 +59,13 @@ pub enum OrderStyle {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct OrderInner {
+pub struct Order {
     pub style: OrderStyle,
     pub items: Vec<CubeId>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct PointId(pub Uuid);
-
-pub type Point = Meta<PointId, PointInner>;
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum PointInner {
+pub enum Point {
     Text(Text),
     Image(Image),
     RawReference(RawReference),

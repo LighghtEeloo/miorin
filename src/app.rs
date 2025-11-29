@@ -11,8 +11,6 @@ use wasm_bindgen_futures::spawn_local;
 use wasm_bindgen::JsCast;
 use std::rc::Rc;
 use std::cell::RefCell;
-use uuid::Uuid;
-use chrono::Utc;
 
 #[component]
 pub fn App() -> impl IntoView {
@@ -213,22 +211,15 @@ fn GlacierPanel(
         let cubes_signal = cubes_clone.clone();
         spawn_local(async move {
             // Create a dummy point cube with paragraph text
-            let dummy_point = Point {
-                id: PointId(Uuid::now_v7()),
-                tags: vec!["!Hey".to_string()],
-                created_at: Utc::now(),
-                updated_at: Utc::now(),
-                vibe: None,
-                inner: PointInner::Text(Text {
-                    style: TextStyle::Paragraph,
-                    text: RichText {
-                        segments: vec![RichTextSegment {
-                            text: "Text".to_string(),
-                            marks: TextMarks::default(),
-                        }],
-                    },
-                }),
-            };
+            let dummy_point = Point::Text(Text {
+                style: TextStyle::Paragraph,
+                text: RichText {
+                    segments: vec![RichTextSegment {
+                        text: "Text".to_string(),
+                        marks: TextMarks::default(),
+                    }],
+                },
+            });
 
             web_sys::console::log_1(&"Creating cube...".into());
             match tauri_api::create_cube(true, CubeContent::Point(dummy_point)).await {
@@ -352,14 +343,14 @@ fn StreamPanel(
 
 #[component]
 fn CubeEntry(cube: Cube) -> impl IntoView {
-    let (title, created_at) = match &cube.inner.content {
-        | CubeContent::Graph(graph) => (format!("Graph"), graph.created_at),
-        | CubeContent::PreOrder(po) => (format!("PreOrder"), po.created_at),
-        | CubeContent::Order(order) => (format!("Order"), order.created_at),
-        | CubeContent::Point(point) => (format!("Point"), point.created_at),
-        | CubeContent::Meta => (format!("Meta"), cube.created_at),
+    let title = match &cube.inner.content {
+        | CubeContent::Graph(_) => "Graph".to_string(),
+        | CubeContent::PreOrder(_) => "PreOrder".to_string(),
+        | CubeContent::Order(_) => "Order".to_string(),
+        | CubeContent::Point(_) => "Point".to_string(),
+        | CubeContent::Meta => "Meta".to_string(),
     };
-    let created = created_at.format("%Y-%m-%d %H:%M").to_string();
+    let created = cube.created_at.format("%Y-%m-%d %H:%M").to_string();
     view! {
         <div
             class="p-3 border rounded cursor-pointer transition-colors duration-200 hover-bg-panel border-[var(--color-border)] bg-[var(--color-panel-bg)]"
