@@ -109,18 +109,18 @@ fn AddPathInput(
             <button::InterfaceButton
                 icon=view! { <Icon icon=LuPlus width="16" height="16" /> }
                 color_variant=ColorVariant::Primary
-                on_click=move |_| on_add_clone()
+                on_click=move |_| on_add()
                 class="pl-2"
             />
             <button::InterfaceButton
                 icon=view! { <Icon icon=LuFolderOpen width="16" height="16" /> }
                 color_variant=ColorVariant::Secondary
                 on_click=move |_| {
-                    let new_path_clone = new_path.clone();
+                    let new_path = new_path.clone();
                     spawn_local(async move {
                         match tauri_api::open_folder_dialog().await {
                             Ok(Some(path)) => {
-                                new_path_clone.set(path);
+                                new_path.set(path);
                             }
                             Ok(None) => {
                                 // User cancelled the dialog
@@ -148,7 +148,7 @@ fn AddPathInput(
                     move |ev| {
                         // If Enter key is pressed, add the path
                         if ev.key_code() == 13 {
-                            on_add();
+                            on_add_clone();
                         }
                     }
                 }
@@ -178,7 +178,7 @@ pub fn Settings(
 
     // Watch paths state
     let watch_paths = RwSignal::new(Vec::<tauri_api::WatchPathConfig>::new());
-    let watch_paths_clone = watch_paths.clone();
+    let watch_paths = watch_paths.clone();
 
     // New path input
     let new_path = RwSignal::new(String::new());
@@ -200,12 +200,12 @@ pub fn Settings(
     // Box the closure so we can store it and use it in multiple places
     let close_settings_boxed: Rc<dyn Fn()> = Rc::new(move || close_settings());
     {
-        let close_settings_clone = close_settings_boxed.clone();
+        let close_settings = close_settings_boxed.clone();
         spawn_local(async move {
             let handler = Closure::wrap(Box::new(move |ev: web_sys::KeyboardEvent| {
                 if ev.key_code() == 27 {
                     // ESC key pressed
-                    close_settings_clone();
+                    close_settings();
                 }
             }) as Box<dyn FnMut(_)>);
             
@@ -221,12 +221,12 @@ pub fn Settings(
 
     // Load settings on mount
     spawn_local({
-        let watch_paths_clone = watch_paths_clone.clone();
+        let watch_paths = watch_paths.clone();
         async move {
             // Load watch paths
             match tauri_api::get_watch_paths().await {
                 | Ok(paths) => {
-                    watch_paths_clone.set(paths);
+                    watch_paths.set(paths);
                 }
                 | Err(e) => {
                     web_sys::console::error_1(&format!("Failed to load watch paths: {}", e).into());
@@ -246,9 +246,9 @@ pub fn Settings(
                 // Clear previous error
                 error_message.set(None);
 
-                let watch_paths_clone = watch_paths.clone();
-                let new_path_clone = new_path.clone();
-                let error_message_clone = error_message.clone();
+                let watch_paths = watch_paths.clone();
+                let new_path = new_path.clone();
+                let error_message = error_message.clone();
                 spawn_local(async move {
                     match tauri_api::add_watch_path(path.clone()).await {
                         | Ok(canonical_path) => {
@@ -256,16 +256,16 @@ pub fn Settings(
                                 &format!("Successfully added path: {}", canonical_path).into(),
                             );
                             // Clear input immediately after successful add
-                            new_path_clone.set(String::new());
+                            new_path.set(String::new());
                             // Also clear any previous error
-                            error_message_clone.set(None);
+                            error_message.set(None);
                             // Reload paths
                             match tauri_api::get_watch_paths().await {
                                 | Ok(paths) => {
-                                    watch_paths_clone.set(paths);
+                                    watch_paths.set(paths);
                                 }
                                 | Err(e) => {
-                                    error_message_clone
+                                    error_message
                                         .set(Some(format!("Failed to reload watch paths: {}", e)));
                                     web_sys::console::error_1(
                                         &format!("Failed to reload watch paths: {}", e).into(),
@@ -274,7 +274,7 @@ pub fn Settings(
                             }
                         }
                         | Err(e) => {
-                            error_message_clone.set(Some(e.clone()));
+                            error_message.set(Some(e.clone()));
                             web_sys::console::error_1(
                                 &format!("Failed to add watch path: {}", e).into(),
                             );
@@ -287,14 +287,14 @@ pub fn Settings(
 
     // Remove path handler
     let remove_path = move |path: String| {
-        let watch_paths_clone = watch_paths.clone();
+        let watch_paths = watch_paths.clone();
         spawn_local(async move {
             match tauri_api::remove_watch_path(path.clone()).await {
                 | Ok(_) => {
                     // Reload paths
                     match tauri_api::get_watch_paths().await {
                         | Ok(paths) => {
-                            watch_paths_clone.set(paths);
+                            watch_paths.set(paths);
                         }
                         | Err(e) => {
                             web_sys::console::error_1(
@@ -314,14 +314,14 @@ pub fn Settings(
 
     // Toggle path enabled handler
     let toggle_path_enabled = move |path: String, enabled: bool| {
-        let watch_paths_clone = watch_paths.clone();
+        let watch_paths = watch_paths.clone();
         spawn_local(async move {
             match tauri_api::toggle_watch_path_enabled(path.clone(), enabled).await {
                 | Ok(_) => {
                     // Reload paths
                     match tauri_api::get_watch_paths().await {
                         | Ok(paths) => {
-                            watch_paths_clone.set(paths);
+                            watch_paths.set(paths);
                         }
                         | Err(e) => {
                             web_sys::console::error_1(
@@ -341,13 +341,13 @@ pub fn Settings(
 
     // Import files handler
     let import_files = {
-        let importing_path_clone = importing_path.clone();
-        let error_message_clone = error_message.clone();
-        let raw_entries_signal_clone = raw_entries_signal.clone();
+        let importing_path = importing_path.clone();
+        let error_message = error_message.clone();
+        let raw_entries_signal = raw_entries_signal.clone();
         move |path: String| {
-            let importing_path_inner = importing_path_clone.clone();
-            let error_message_inner = error_message_clone.clone();
-            let raw_entries_signal_inner = raw_entries_signal_clone.clone();
+            let importing_path_inner = importing_path.clone();
+            let error_message_inner = error_message.clone();
+            let raw_entries_signal_inner = raw_entries_signal.clone();
             spawn_local(async move {
                 error_message_inner.set(None);
                 importing_path_inner.set(Some(path.clone()));
@@ -447,7 +447,7 @@ pub fn Settings(
                                     disabled=clearing_entries_value
                                     on:click=move |_| {
                                         clearing_entries_signal.set(true);
-                                        let clearing_entries_signal_clone = clearing_entries_signal.clone();
+                                        let clearing_entries_signal = clearing_entries_signal.clone();
                                         spawn_local(async move {
                                             match tauri_api::delete_all_raw_entries().await {
                                                 | Ok(count) => {
@@ -462,7 +462,7 @@ pub fn Settings(
                                                     web_sys::console::error_1(
                                                         &format!("Failed to delete all raw entries: {}", e).into(),
                                                     );
-                                                    clearing_entries_signal_clone.set(false);
+                                                    clearing_entries_signal.set(false);
                                                 }
                                             }
                                         });
@@ -495,22 +495,22 @@ pub fn Settings(
                                             // Otherwise, fetch and show data
                                             showing_settings_storage_signal.set(true);
                                             settings_storage_data_signal.set(None);
-                                            let showing_settings_storage_signal_clone = showing_settings_storage_signal.clone();
-                                            let settings_storage_data_signal_clone = settings_storage_data_signal.clone();
+                                            let showing_settings_storage_signal = showing_settings_storage_signal.clone();
+                                            let settings_storage_data_signal = settings_storage_data_signal.clone();
                                             spawn_local(async move {
                                                 match tauri_api::get_all_store_data().await {
                                                     | Ok(data) => {
                                                         let json_string = serde_json::to_string_pretty(&data)
                                                             .unwrap_or_else(|_| format!("{:?}", data));
-                                                        settings_storage_data_signal_clone.set(Some(json_string));
-                                                        showing_settings_storage_signal_clone.set(false);
+                                                        settings_storage_data_signal.set(Some(json_string));
+                                                        showing_settings_storage_signal.set(false);
                                                     }
                                                     | Err(e) => {
                                                         web_sys::console::error_1(
                                                             &format!("Failed to get store data: {}", e).into(),
                                                         );
-                                                        settings_storage_data_signal_clone.set(Some(format!("Error: {}", e)));
-                                                        showing_settings_storage_signal_clone.set(false);
+                                                        settings_storage_data_signal.set(Some(format!("Error: {}", e)));
+                                                        showing_settings_storage_signal.set(false);
                                                     }
                                                 }
                                             });
@@ -586,11 +586,11 @@ pub fn Settings(
                     {move || {
                         let settings_storage_data_value = settings_storage_data.get();
                         settings_storage_data_value.map(|data| {
-                            let data_clone = data.clone();
+                            let data = data.clone();
                             view! {
                                 <div class="mt-5 bg-transparent rounded border p-0 border-[var(--color-border,#dee2e6)]">
                                     <h3 class="m-0 px-4 pt-4 pb-2.5 text-sm font-semibold">Settings Storage State:</h3>
-                                    <pre class="m-0 px-4 pb-4 overflow-x-auto font-mono text-xs whitespace-pre-wrap break-words leading-snug bg-[var(--color-bg,#ffffff)]">{data_clone}</pre>
+                                    <pre class="m-0 px-4 pb-4 overflow-x-auto font-mono text-xs whitespace-pre-wrap break-words leading-snug bg-[var(--color-bg,#ffffff)]">{data}</pre>
                                 </div>
                             }
                         })

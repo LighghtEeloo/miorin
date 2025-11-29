@@ -16,7 +16,7 @@ use std::cell::RefCell;
 pub fn App() -> impl IntoView {
     // Load raw entries from database
     let raw_entries = RwSignal::new(Vec::<Raw>::new());
-    let raw_entries_clone = raw_entries.clone();
+    let raw_entries = raw_entries.clone();
     spawn_local(async move {
         web_sys::console::log_1(&"Starting to load raw entries from database...".into());
         match tauri_api::get_all_raw_entries().await {
@@ -24,7 +24,7 @@ pub fn App() -> impl IntoView {
                 web_sys::console::log_1(
                     &format!("Successfully loaded {} raw entries", entries.len()).into(),
                 );
-                raw_entries_clone.set(entries);
+                raw_entries.set(entries);
             }
             | Err(e) => {
                 web_sys::console::error_1(&format!("Failed to load raw entries: {}", e).into());
@@ -35,10 +35,10 @@ pub fn App() -> impl IntoView {
 
     // Load cubes from database
     let cubes = RwSignal::new(Vec::<Cube>::new());
-    let cubes_clone = cubes.clone();
+    let cubes = cubes.clone();
     spawn_local(async move {
         match tauri_api::get_all_cubes().await {
-            | Ok(cubes_data) => cubes_clone.set(cubes_data),
+            | Ok(cubes_data) => cubes.set(cubes_data),
             | Err(e) => {
                 web_sys::console::error_1(&format!("Failed to load cubes: {}", e).into());
             }
@@ -51,17 +51,17 @@ pub fn App() -> impl IntoView {
     // Panel widths - load once at app level so they persist across view switches
     let left_width = RwSignal::new(250.0);
     let right_width = RwSignal::new(300.0);
-    let left_width_clone = left_width.clone();
-    let right_width_clone = right_width.clone();
+    let left_width = left_width.clone();
+    let right_width = right_width.clone();
     spawn_local(async move {
         match tauri_api::get_panel_left_width().await {
-            | Ok(width) => left_width_clone.set(width),
+            | Ok(width) => left_width.set(width),
             | Err(e) => {
                 web_sys::console::warn_1(&format!("Failed to load left panel width: {}", e).into());
             }
         }
         match tauri_api::get_panel_right_width().await {
-            | Ok(width) => right_width_clone.set(width),
+            | Ok(width) => right_width.set(width),
             | Err(e) => {
                 web_sys::console::warn_1(
                     &format!("Failed to load right panel width: {}", e).into(),
@@ -124,15 +124,15 @@ fn MainView(
 
     let on_resize_left = {
         let left_width = left_width.clone();
-        let save_timeout = left_save_timeout.clone();
+        let save_timeout_clone = left_save_timeout.clone();
         std::rc::Rc::new(move |new_width: f64| {
             left_width.set(new_width);
             // Debounce saves - clear existing timeout and set a new one
-            if let Some(timeout_id) = save_timeout.borrow_mut().take() {
+            if let Some(timeout_id) = save_timeout_clone.borrow_mut().take() {
                 let window = web_sys::window().unwrap();
                 window.clear_timeout_with_handle(timeout_id);
             }
-            let save_timeout_clone = save_timeout.clone();
+            let save_timeout = save_timeout_clone.clone();
             let left_width_for_save = left_width.clone();
             let closure = wasm_bindgen::closure::Closure::wrap(Box::new(move || {
                 let width_to_save = left_width_for_save.get();
@@ -143,7 +143,7 @@ fn MainView(
                         );
                     }
                 });
-                save_timeout_clone.borrow_mut().take();
+                save_timeout.borrow_mut().take();
             }) as Box<dyn FnMut()>);
             let timeout_id = web_sys::window()
                 .unwrap()
@@ -153,21 +153,21 @@ fn MainView(
                 )
                 .unwrap();
             closure.forget();
-            *save_timeout.borrow_mut() = Some(timeout_id);
+            *save_timeout_clone.borrow_mut() = Some(timeout_id);
         }) as std::rc::Rc<dyn Fn(f64)>
     };
 
     let on_resize_right = {
         let right_width = right_width.clone();
-        let save_timeout = right_save_timeout.clone();
+        let save_timeout_clone = right_save_timeout.clone();
         std::rc::Rc::new(move |new_width: f64| {
             right_width.set(new_width);
             // Debounce saves - clear existing timeout and set a new one
-            if let Some(timeout_id) = save_timeout.borrow_mut().take() {
+            if let Some(timeout_id) = save_timeout_clone.borrow_mut().take() {
                 let window = web_sys::window().unwrap();
                 window.clear_timeout_with_handle(timeout_id);
             }
-            let save_timeout_clone = save_timeout.clone();
+            let save_timeout = save_timeout_clone.clone();
             let right_width_for_save = right_width.clone();
             let closure = wasm_bindgen::closure::Closure::wrap(Box::new(move || {
                 let width_to_save = right_width_for_save.get();
@@ -178,7 +178,7 @@ fn MainView(
                         );
                     }
                 });
-                save_timeout_clone.borrow_mut().take();
+                save_timeout.borrow_mut().take();
             }) as Box<dyn FnMut()>);
             let timeout_id = web_sys::window()
                 .unwrap()
@@ -188,7 +188,7 @@ fn MainView(
                 )
                 .unwrap();
             closure.forget();
-            *save_timeout.borrow_mut() = Some(timeout_id);
+            *save_timeout_clone.borrow_mut() = Some(timeout_id);
         }) as std::rc::Rc<dyn Fn(f64)>
     };
 
@@ -215,9 +215,9 @@ fn MainView(
 fn GlacierPanel(
     cubes: RwSignal<Vec<Cube>>, on_resize_right: std::rc::Rc<dyn Fn(f64) + 'static>,
 ) -> impl IntoView {
-    let cubes_clone = cubes.clone();
+    let cubes = cubes.clone();
     let create_cube_action = move |_| {
-        let cubes_signal = cubes_clone.clone();
+        let cubes_signal = cubes.clone();
         spawn_local(async move {
             // Create a dummy point cube with paragraph text
             let dummy_point = Point::Text(Text {
@@ -407,8 +407,8 @@ fn RawPreview(content: RawContent) -> impl IntoView {
                 RawContent::Image(img) => {
                     // Load thumbnail if available
                     let thumbnail_url = RwSignal::new(Option::<String>::None);
-                    let thumbnail_url_clone = thumbnail_url.clone();
-                    let img_clone = img.clone();
+                    let thumbnail_url = thumbnail_url.clone();
+                    let img = img.clone();
 
                     if let Some(thumb_blob_id) = img.thumbnail_blob_id {
                         web_sys::console::log_1(
@@ -434,7 +434,7 @@ fn RawPreview(content: RawContent) -> impl IntoView {
                                     };
 
                                     if !base64.is_empty() {
-                                        let format = img_clone.format.as_deref().unwrap_or("jpeg");
+                                        let format = img.format.as_deref().unwrap_or("jpeg");
                                         let mime_type = match format {
                                             "png" => "image/png",
                                             "jpeg" | "jpg" => "image/jpeg",
@@ -443,7 +443,7 @@ fn RawPreview(content: RawContent) -> impl IntoView {
                                             _ => "image/jpeg",
                                         };
                                         let data_url = format!("data:{};base64,{}", mime_type, base64);
-                                        thumbnail_url_clone.set(Some(data_url));
+                                        thumbnail_url.set(Some(data_url));
                                     }
                                 }
                                 Err(_) => {

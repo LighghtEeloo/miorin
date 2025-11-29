@@ -30,7 +30,7 @@ pub async fn start_file_watcher(app: AppHandle) -> Result<(), String> {
     tauri::async_runtime::spawn(async move {
         while let Some(file_path) = rx.recv().await {
             tracing::debug!(file_path = ?file_path, "Processing file event");
-            if let Err(e) = handle_file_event(&app_clone, &file_path).await {
+            if let Err(e) = handle_file_event(&app, &file_path).await {
                 tracing::error!(file_path = ?file_path, error = %e, "Failed to handle file event");
             }
         }
@@ -53,7 +53,7 @@ pub async fn start_file_watcher(app: AppHandle) -> Result<(), String> {
 
         // Create the watcher with async handler
         let watch_path_clone = watch_path.clone();
-        let tx_clone = tx.clone();
+        let tx = tx.clone();
         let mut watcher =
             notify::recommended_watcher(move |result: Result<Event, notify::Error>| {
                 match result {
@@ -65,7 +65,7 @@ pub async fn start_file_watcher(app: AppHandle) -> Result<(), String> {
                                     // Check if the file is directly in the watched directory (not in a subdirectory)
                                     if let Some(parent) = path.parent() {
                                         if parent == watch_path_clone {
-                                            if let Err(e) = tx_clone.blocking_send(path.clone()) {
+                                            if let Err(e) = tx.blocking_send(path.clone()) {
                                                 tracing::error!("Failed to send file event: {}", e);
                                             }
                                         }
@@ -99,7 +99,7 @@ pub async fn start_file_watcher(app: AppHandle) -> Result<(), String> {
 
     // Keep the watchers alive by storing them in app state
     use tauri::Manager;
-    app.manage(Arc::new(watchers));
+    app_clone.manage(Arc::new(watchers));
 
     Ok(())
 }
@@ -109,23 +109,22 @@ async fn handle_file_event(app: &AppHandle, file_path: &Path) -> Result<(), Stri
     tracing::info!(file_path = ?file_path, "Handling file event");
 
     // Get file metadata for timestamps first (before creating blob)
-    let file_metadata = std::fs::metadata(file_path)
-        .map_err(|e| format!("Failed to get file metadata: {}", e))?;
-    
+    let file_metadata =
+        std::fs::metadata(file_path).map_err(|e| format!("Failed to get file metadata: {}", e))?;
+
     // Use file modification time, or creation time if modification time is not available
     let file_time = file_metadata
         .modified()
         .or_else(|_| file_metadata.created())
         .map_err(|e| format!("Failed to get file time: {}", e))?;
-    
+
     let file_datetime = chrono::DateTime::<chrono::Utc>::from(file_time);
-    
+
     // Check for duplicate before creating blob
     use crate::db::find_duplicate_raw_entry;
     use crate::db::get_db_pool;
-    let pool = get_db_pool(app).await
-        .map_err(|e| format!("Failed to get database pool: {}", e))?;
-    
+    let pool = get_db_pool(app).await.map_err(|e| format!("Failed to get database pool: {}", e))?;
+
     let source = RawSource::FileWatcher { original_path: file_path.to_path_buf() };
     if let Some(existing) = find_duplicate_raw_entry(&pool, &source, &file_datetime).await? {
         tracing::info!(
@@ -147,11 +146,11 @@ async fn handle_file_event(app: &AppHandle, file_path: &Path) -> Result<(), Stri
 
         // Generate thumbnail (max 200px)
         let thumbnail_blob_id = match generate_thumbnail(app, blob_id, 200).await {
-            Ok((thumb_id, _)) => {
+            | Ok((thumb_id, _)) => {
                 tracing::debug!(thumbnail_blob_id = %thumb_id.0, "Generated thumbnail");
                 Some(thumb_id)
             }
-            Err(e) => {
+            | Err(e) => {
                 tracing::warn!(error = %e, "Failed to generate thumbnail, continuing without it");
                 None
             }
@@ -159,7 +158,7 @@ async fn handle_file_event(app: &AppHandle, file_path: &Path) -> Result<(), Stri
 
         // Compute dominant color (simplified - just sample center pixel)
         let dominant_color_rgb = match image::open(file_path) {
-            Ok(img) => {
+            | Ok(img) => {
                 let w = img.width();
                 let h = img.height();
                 if w > 0 && h > 0 {
@@ -170,7 +169,7 @@ async fn handle_file_event(app: &AppHandle, file_path: &Path) -> Result<(), Stri
                     None
                 }
             }
-            Err(_) => None,
+            | Err(_) => None,
         };
 
         RawContent::Image(ImageRaw {
@@ -202,7 +201,8 @@ async fn handle_file_event(app: &AppHandle, file_path: &Path) -> Result<(), Stri
     };
 
     // Save to database with file timestamps
-    create_raw_entry(app.clone(), inner, Some(created_at_str.clone()), Some(created_at_str)).await?;
+    create_raw_entry(app.clone(), inner, Some(created_at_str.clone()), Some(created_at_str))
+        .await?;
 
     tracing::info!(file_path = ?file_path, "Created raw entry from file");
     Ok(())

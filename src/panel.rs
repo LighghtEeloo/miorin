@@ -73,7 +73,7 @@ pub fn Panel(
                 let document = web_sys::window()
                     .and_then(|w| w.document())
                     .expect("should have document");
-                let mut state = cleanup_state_clone.borrow_mut();
+                let mut state = cleanup_state.borrow_mut();
                 if let Some(ref on_mousemove) = *state {
                     document.remove_event_listener_with_callback("mousemove", on_mousemove.as_ref().unchecked_ref()).ok();
                 }
@@ -83,7 +83,7 @@ pub fn Panel(
             let document = web_sys::window()
                 .and_then(|w| w.document())
                 .expect("should have document");
-            if let Some(ref on_mousemove) = *cleanup_state.borrow() {
+            if let Some(ref on_mousemove) = *cleanup_state_clone.borrow() {
                 document.add_event_listener_with_callback("mousemove", on_mousemove.as_ref().unchecked_ref()).ok();
             }
             document.add_event_listener_with_callback("mouseup", on_mouseup.as_ref().unchecked_ref()).ok();
