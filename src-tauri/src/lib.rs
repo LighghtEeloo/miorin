@@ -38,10 +38,7 @@ async fn open_folder_dialog_cmd() -> Result<Option<String>, String> {
     use rfd::AsyncFileDialog;
     
     let default_dir = dirs::home_dir().unwrap_or_default();
-    let dialog = AsyncFileDialog::new()
-        .set_directory(&default_dir)
-        .pick_folder()
-        .await;
+    let dialog = AsyncFileDialog::new().set_directory(&default_dir).pick_folder().await;
     
     Ok(dialog.map(|handle| handle.path().to_string_lossy().to_string()))
 }
@@ -168,6 +165,41 @@ pub fn run() {
             open_folder_dialog_cmd,
         ])
         .setup(|app| {
+            // Set window size to screen size
+            use tauri::Manager;
+
+            // Try to get the main window (try "main" first, then get the first available window)
+            let window = app
+                .get_webview_window("main")
+                .or_else(|| app.webview_windows().values().next().cloned());
+
+            if let Some(window) = window {
+                // Get the primary monitor
+                if let Ok(Some(monitor)) = window.primary_monitor() {
+                    let size = monitor.size();
+                    tracing::info!(
+                        "Screen size: {}x{} (physical pixels), setting window to full screen size",
+                        size.width,
+                        size.height
+                    );
+
+                    // Set window size to match screen size using PhysicalSize
+                    // Monitor size is in physical pixels, so we use PhysicalSize
+                    if let Err(e) = window.set_size(tauri::PhysicalSize::new(size.width, size.height)) {
+                        tracing::warn!("Failed to set window size: {}", e);
+                    }
+
+                    // Set window position to top left corner
+                    if let Err(e) = window.set_position(tauri::PhysicalPosition::new(0, 0)) {
+                        tracing::warn!("Failed to set window position: {}", e);
+                    }
+                } else {
+                    tracing::warn!("Failed to get primary monitor");
+                }
+            } else {
+                tracing::warn!("No window found to resize");
+            }
+
             // Start file watcher for configured path
             let app_handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {
