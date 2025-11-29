@@ -14,7 +14,7 @@ fn WatchPathItem(
     on_import: impl Fn(String) + 'static,
 ) -> impl IntoView {
     let path = config.path.clone();
-    let enabled = config.enabled;
+    let enabled_signal = RwSignal::new(config.enabled);
     let path_for_toggle = path.clone();
     let path_for_remove = path.clone();
     let path_for_import = path.clone();
@@ -28,16 +28,20 @@ fn WatchPathItem(
                     <input
                         type="checkbox"
                         class="opacity-0 w-0 h-0"
-                        checked=enabled
-                        on:change=move |_| on_toggle(path_for_toggle.clone(), !enabled)
+                        checked=enabled_signal
+                        on:change=move |_| {
+                            let new_value = !enabled_signal.get();
+                            enabled_signal.set(new_value);
+                            on_toggle(path_for_toggle.clone(), new_value);
+                        }
                     />
                     <span 
                         class="absolute cursor-pointer top-0 left-0 right-0 bottom-0 rounded-full transition-all duration-300"
-                        style=if enabled { "background-color: var(--color-primary, #007bff);" } else { "background-color: var(--color-toggle-bg, #ccc);" }
+                        style=move || if enabled_signal.get() { "background-color: var(--color-primary, #007bff);" } else { "background-color: var(--color-toggle-bg, #ccc);" }
                     >
                         <span 
                             class="absolute h-[18px] w-[18px] left-[3px] bottom-[3px] bg-white rounded-full transition-all duration-300"
-                            style=if enabled { "transform: translateX(20px);" } else { "transform: translateX(0);" }
+                            style=move || if enabled_signal.get() { "transform: translateX(20px);" } else { "transform: translateX(0);" }
                         ></span>
                     </span>
                 </label>
