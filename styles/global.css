@@ -31,6 +31,7 @@ html, body {
 
 @media (prefers-color-scheme: dark) {
     :root {
+        color-scheme: dark;
         --color-text: #f6f6f6;
         --color-text-secondary: #999;
         --color-text-muted: #666;
@@ -40,6 +41,48 @@ html, body {
         --color-workspace-bg: #1a1a1a;
         --color-border: #3a3a3a;
         --color-hover: #2a2a2a;
+    }
+}
+
+.panel-content {
+    scrollbar-width: thin;
+    scrollbar-color: #888 transparent;
+}
+
+.panel-content::-webkit-scrollbar {
+    width: 12px;
+}
+
+.panel-content::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.panel-content::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 6px;
+    border: none;
+}
+
+.panel-content::-webkit-scrollbar-thumb:hover {
+    background: #666;
+}
+
+@media (prefers-color-scheme: dark) {
+    .panel-content {
+        scrollbar-color: #333 transparent;
+    }
+    
+    .panel-content::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    
+    .panel-content::-webkit-scrollbar-thumb {
+        background: #333;
+        border: none;
+    }
+    
+    .panel-content::-webkit-scrollbar-thumb:hover {
+        background: #444;
     }
 }
 

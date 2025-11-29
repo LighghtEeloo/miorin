@@ -8,7 +8,7 @@ where
 {
     let styles = style! {
         .card-list {
-            border: 3px solid green;
+            // border: 3px solid green;
             display: flex;
             flex-direction: column;
             gap: 0.5rem;

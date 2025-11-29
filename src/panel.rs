@@ -87,22 +87,6 @@ pub fn panel_content_styles() -> Result<styled::Style, stylist::Error> {
             padding: 0.5rem;
             box-sizing: border-box;
         }
-        .panel-content::-webkit-scrollbar {
-            width: 12px;
-            display: block;
-        }
-        .panel-content::-webkit-scrollbar-track {
-            background: #f0f0f0;
-            border-radius: 6px;
-        }
-        .panel-content::-webkit-scrollbar-thumb {
-            background: #888;
-            border-radius: 6px;
-            border: 2px solid #f0f0f0;
-        }
-        .panel-content::-webkit-scrollbar-thumb:hover {
-            background: #666;
-        }
     }
 }
 
