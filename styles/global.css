@@ -52,12 +52,12 @@ body {
         --color-workspace-bg: #1a1a1a;
         --color-border: #3a3a3a;
         --color-hover: #3a3a3a;
-        --color-primary: #007bff;
-        --color-primary-hover: #0056b3;
-        --color-danger: #dc3545;
-        --color-danger-hover: #c82333;
-        --color-secondary: #6c757d;
-        --color-secondary-hover: #5a6268;
+        --color-primary: #0052a3;
+        --color-primary-hover: #007bff;
+        --color-danger: #a93226;
+        --color-danger-hover: #b21f2f;
+        --color-secondary: #444;
+        --color-secondary-hover: #555;
         --color-toggle-bg: #555;
         --color-toggle-thumb: #ffffff;
     }

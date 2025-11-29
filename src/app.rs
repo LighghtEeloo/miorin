@@ -133,7 +133,7 @@ fn GlacierPanel(cubes: RwSignal<Vec<Cube>>) -> impl IntoView {
             title="Glacier"
             header_actions=view! {
                 <button
-                    class="p-1.5 text-white border-none rounded cursor-pointer flex items-center justify-center w-7 h-7 min-w-7 transition-colors duration-200 bg-[var(--color-primary,#007bff)]"
+                    class="p-1.5 text-white border-none rounded cursor-pointer flex items-center justify-center w-7 h-7 min-w-7 transition-colors duration-200 bg-[var(--color-primary,#007bff)] hover-bg-primary"
                     on:click=create_cube_action
                 >
                     <Icon icon=LuPlus width="16" height="16" />
@@ -181,7 +181,10 @@ fn StreamPanel(
         <panel::Panel
             title="Stream"
             header_actions=view! {
-                <button class="settings-button" on:click=open_settings>
+                <button
+                    class="p-1.5 text-white border-none rounded cursor-pointer flex items-center justify-center w-7 h-7 min-w-7 transition-colors duration-200 bg-[var(--color-secondary,#6c757d)] hover-bg-secondary"
+                    on:click=open_settings
+                >
                     <Icon icon=LuSettings width="16" height="16" />
                 </button>
             }.into_any()
