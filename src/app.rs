@@ -3,6 +3,7 @@ use crate::card;
 use crate::tauri_api;
 use crate::button;
 use crate::color::ColorVariant;
+use crate::filter::{FilterButton, FilterMode};
 use leptos::prelude::*;
 use leptos_icons::Icon;
 use icondata::{LuPlus, LuSettings};
@@ -35,7 +36,6 @@ pub fn App() -> impl IntoView {
 
     // Load cubes from database
     let cubes = RwSignal::new(Vec::<Cube>::new());
-    let cubes = cubes.clone();
     spawn_local(async move {
         match tauri_api::get_all_cubes().await {
             | Ok(cubes_data) => cubes.set(cubes_data),
@@ -258,40 +258,44 @@ fn GlacierPanel(
         });
     };
 
+    // Filter state
+    let filter_mode = RwSignal::new(FilterMode::Pinned);
+
     view! {
         <panel::Panel
             title="Glacier"
             resizable_right=true
             on_resize_right=on_resize_right.clone()
             header_actions=view! {
-                <button::ActionButton
-                    icon=view! { <Icon icon=LuPlus width="12" height="12" /> }
-                    color_variant=ColorVariant::Primary
-                    on_click=create_cube_action
-                />
+                <div class="flex items-center gap-1.5">
+                    <FilterButton filter_mode=filter_mode.clone() />
+                    <button::ActionButton
+                        icon=view! { <Icon icon=LuPlus width="12" height="12" /> }
+                        color_variant=ColorVariant::Primary
+                        on_click=create_cube_action
+                    />
+                </div>
             }.into_any()
         >
             <card::CardList items=move || {
                 let cubes_data = cubes.get();
+                let mode = filter_mode.get();
                 web_sys::console::log_1(
-                    &format!("GlacierPanel: Got {} total cubes", cubes_data.len()).into(),
+                    &format!("GlacierPanel: Got {} total cubes, filter mode: {:?}", cubes_data.len(), mode).into(),
                 );
-                let pinned: Vec<_> = cubes_data
+                let filtered: Vec<_> = cubes_data
                     .into_iter()
                     .filter(|cube| {
-                        let is_pinned = cube.inner.pin;
-                        if !is_pinned {
-                            web_sys::console::log_1(
-                                &format!("Filtering out cube with pin=false, id={}", cube.id.0).into(),
-                            );
+                        match mode {
+                            FilterMode::Pinned => cube.inner.pin,
+                            FilterMode::All => true,
                         }
-                        is_pinned
                     })
                     .collect();
                 web_sys::console::log_1(
-                    &format!("GlacierPanel: {} pinned cubes after filter", pinned.len()).into(),
+                    &format!("GlacierPanel: {} cubes after filter", filtered.len()).into(),
                 );
-                pinned
+                filtered
                     .into_iter()
                     .map(|cube| view! { <CubeEntry cube=cube /> }.into_any())
                     .collect::<Vec<_>>()

@@ -6,6 +6,7 @@ mod card;
 mod button;
 mod color;
 mod toggle;
+mod filter;
 
 use app::*;
 use leptos::prelude::*;
