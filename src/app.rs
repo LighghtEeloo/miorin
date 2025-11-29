@@ -82,20 +82,47 @@ fn MainView(
     cubes: RwSignal<Vec<Cube>>, raw_entries: RwSignal<Vec<Raw>>,
     open_settings: impl Fn(web_sys::MouseEvent) + 'static,
 ) -> impl IntoView {
+    let left_width = RwSignal::new(250.0);
+    let right_width = RwSignal::new(300.0);
+
+    let on_resize_left = {
+        let left_width = left_width.clone();
+        std::rc::Rc::new(move |new_width: f64| {
+            left_width.set(new_width);
+        }) as std::rc::Rc<dyn Fn(f64)>
+    };
+
+    let on_resize_right = {
+        let right_width = right_width.clone();
+        std::rc::Rc::new(move |new_width: f64| {
+            right_width.set(new_width);
+        }) as std::rc::Rc<dyn Fn(f64)>
+    };
+
     view! {
         <div
             class="grid h-screen max-h-screen overflow-hidden bg-[var(--color-bg)]"
-            style="grid-template-columns: 250px 1fr 300px;"
+            style=move || format!("grid-template-columns: {}px 1fr {}px;", left_width.get(), right_width.get())
         >
-            <GlacierPanel cubes=cubes />
+            <GlacierPanel 
+                cubes=cubes 
+                on_resize_right=on_resize_left.clone()
+            />
             <Workspace />
-            <StreamPanel raw_entries=raw_entries open_settings=open_settings />
+            <StreamPanel 
+                raw_entries=raw_entries 
+                open_settings=open_settings
+                on_resize_left=on_resize_right.clone()
+            />
         </div>
     }
 }
 
 #[component]
-fn GlacierPanel(cubes: RwSignal<Vec<Cube>>) -> impl IntoView {
+fn GlacierPanel(
+    cubes: RwSignal<Vec<Cube>>,
+    on_resize_right: std::rc::Rc<dyn Fn(f64) + 'static>,
+) -> impl IntoView {
     let cubes_clone = cubes.clone();
     let create_cube_action = move |_| {
         let cubes_signal = cubes_clone.clone();
@@ -132,6 +159,8 @@ fn GlacierPanel(cubes: RwSignal<Vec<Cube>>) -> impl IntoView {
     view! {
         <panel::Panel
             title="Glacier"
+            resizable_right=true
+            on_resize_right=on_resize_right.clone()
             header_actions=view! {
                 <button::ActionButton
                     icon=view! { <Icon icon=LuPlus width="12" height="12" /> }
@@ -175,11 +204,15 @@ fn Workspace() -> impl IntoView {
 
 #[component]
 fn StreamPanel(
-    raw_entries: RwSignal<Vec<Raw>>, open_settings: impl Fn(web_sys::MouseEvent) + 'static,
+    raw_entries: RwSignal<Vec<Raw>>, 
+    open_settings: impl Fn(web_sys::MouseEvent) + 'static,
+    on_resize_left: std::rc::Rc<dyn Fn(f64) + 'static>,
 ) -> impl IntoView {
     view! {
         <panel::Panel
             title="Stream"
+            resizable_left=true
+            on_resize_left=on_resize_left.clone()
             header_actions=view! {
                 <button::ActionButton
                     icon=view! { <Icon icon=LuSettings width="12" height="12" /> }
