@@ -1,4 +1,5 @@
 use crate::tauri_api;
+use crate::button;
 use leptos::prelude::*;
 use leptos_icons::Icon;
 use icondata::{LuDownload, LuEye, LuEyeOff, LuFolderOpen, LuPlus, LuRefreshCw, LuTrash2, LuX};
@@ -52,18 +53,16 @@ fn WatchPathItem(
                 <span class="flex-1 break-all text-xs font-mono text-[var(--color-text-secondary,#6c757d)]">{path}</span>
             </div>
             <div class="flex gap-2">
-                <button
-                    class="p-2 border-none rounded cursor-pointer text-sm font-medium transition-colors duration-200 flex items-center justify-center gap-1.5 text-white hover-bg-primary bg-[var(--color-primary,#007bff)]"
-                    on:click=move |_| on_import(path_for_import.clone())
-                >
-                    <Icon icon=LuDownload width="16" height="16" />
-                </button>
-                <button
-                    class="p-2 border-none rounded cursor-pointer text-sm font-medium transition-colors duration-200 flex items-center justify-center gap-1.5 text-white hover-bg-danger bg-[var(--color-danger,#dc3545)]"
-                    on:click=move |_| on_remove(path_for_remove.clone())
-                >
-                    <Icon icon=LuTrash2 width="16" height="16" />
-                </button>
+                <button::InterfaceButton
+                    icon=view! { <Icon icon=LuDownload width="16" height="16" /> }
+                    color_variant="primary"
+                    on_click=move |_| on_import(path_for_import.clone())
+                />
+                <button::InterfaceButton
+                    icon=view! { <Icon icon=LuTrash2 width="16" height="16" /> }
+                    color_variant="danger"
+                    on_click=move |_| on_remove(path_for_remove.clone())
+                />
             </div>
         </li>
     }

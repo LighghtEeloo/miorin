@@ -3,6 +3,7 @@ mod tauri_api;
 mod settings;
 mod panel;
 mod card;
+mod button;
 
 use app::*;
 use leptos::prelude::*;

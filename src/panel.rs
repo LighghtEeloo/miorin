@@ -2,10 +2,20 @@ use leptos::prelude::*;
 
 #[component]
 pub fn Panel(
-    title: &'static str, #[prop(optional)] header_actions: Option<AnyView>, children: Children,
+    title: &'static str,
+    #[prop(optional)] header_actions: Option<AnyView>,
+    #[prop(optional)] class: Option<&'static str>,
+    children: Children,
 ) -> impl IntoView {
+    let base_classes = "flex flex-col box-border max-h-full min-h-0 overflow-hidden h-screen";
+    let div_classes = if let Some(custom_class) = class {
+        format!("{} {}", base_classes, custom_class)
+    } else {
+        base_classes.to_string()
+    };
+
     view! {
-        <div class="flex flex-col box-border max-h-full min-h-0 overflow-hidden h-screen">
+        <div class=div_classes>
             <div 
                 class="flex flex-col h-full max-h-full min-h-0 border-r overflow-hidden border-[var(--color-border)] bg-[var(--color-panel-bg)]"
             >

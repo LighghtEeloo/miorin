@@ -1,6 +1,7 @@
 use crate::panel;
 use crate::card;
 use crate::tauri_api;
+use crate::button;
 use leptos::prelude::*;
 use leptos_icons::Icon;
 use icondata::{LuPlus, LuSettings};
@@ -132,12 +133,11 @@ fn GlacierPanel(cubes: RwSignal<Vec<Cube>>) -> impl IntoView {
         <panel::Panel
             title="Glacier"
             header_actions=view! {
-                <button
-                    class="p-0.5 text-white border-none rounded cursor-pointer flex items-center justify-center w-5 h-5 min-w-5 transition-colors duration-200 bg-[var(--color-primary,#007bff)] hover-bg-primary"
-                    on:click=create_cube_action
-                >
-                    <Icon icon=LuPlus width="12" height="12" />
-                </button>
+                <button::HeaderActionButton
+                    icon=view! { <Icon icon=LuPlus width="12" height="12" /> }
+                    color_variant="primary"
+                    on_click=create_cube_action
+                />
             }.into_any()
         >
             <card::CardList items=move || {
@@ -181,12 +181,11 @@ fn StreamPanel(
         <panel::Panel
             title="Stream"
             header_actions=view! {
-                <button
-                    class="p-0.5 text-white border-none rounded cursor-pointer flex items-center justify-center w-5 h-5 min-w-5 transition-colors duration-200 bg-[var(--color-secondary,#6c757d)] hover-bg-secondary"
-                    on:click=open_settings
-                >
-                    <Icon icon=LuSettings width="12" height="12" />
-                </button>
+                <button::HeaderActionButton
+                    icon=view! { <Icon icon=LuSettings width="12" height="12" /> }
+                    color_variant="secondary"
+                    on_click=open_settings
+                />
             }.into_any()
         >
             <card::CardList items=move || {
