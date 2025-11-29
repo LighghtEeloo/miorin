@@ -16,11 +16,10 @@ pub fn Panel(
     children: Children,
 ) -> impl IntoView {
     let base_classes = "flex flex-col box-border max-h-full min-h-0 overflow-hidden h-screen relative";
-    let div_classes = if let Some(custom_class) = class {
-        format!("{} {}", base_classes, custom_class)
-    } else {
-        base_classes.to_string()
-    };
+    let div_classes = class.map_or_else(
+        || base_classes.to_string(),
+        |custom_class| format!("{} {}", base_classes, custom_class),
+    );
 
     let show_left_resizer = resizable_left.unwrap_or(false);
     let show_right_resizer = resizable_right.unwrap_or(false);
