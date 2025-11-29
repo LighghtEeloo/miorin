@@ -37,7 +37,7 @@ pub fn InterfaceButton(
     on_click: impl Fn(web_sys::MouseEvent) + 'static,
     #[prop(optional)] class: Option<&'static str>, #[prop(optional)] children: Option<Children>,
 ) -> impl IntoView {
-    let base_classes = "p-2 border-none rounded cursor-pointer text-sm font-medium transition-colors duration-200 flex items-center justify-center gap-1.5 text-white w-8 h-8 min-w-8";
+    let base_classes = "px-2 py-2 border-none rounded cursor-pointer text-sm font-medium transition-colors duration-200 flex items-center justify-center gap-1.5 text-white min-w-[38px] min-h-[38px]";
     let color_classes = match color_variant {
         | "primary" => "bg-[var(--color-primary,#007bff)] hover-bg-primary",
         | "secondary" => "bg-[var(--color-secondary,#6c757d)] hover-bg-secondary",
