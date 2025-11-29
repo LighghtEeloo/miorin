@@ -48,6 +48,28 @@ pub fn App() -> impl IntoView {
     // Settings visibility state
     let show_settings = RwSignal::new(false);
 
+    // Panel widths - load once at app level so they persist across view switches
+    let left_width = RwSignal::new(250.0);
+    let right_width = RwSignal::new(300.0);
+    let left_width_clone = left_width.clone();
+    let right_width_clone = right_width.clone();
+    spawn_local(async move {
+        match tauri_api::get_panel_left_width().await {
+            | Ok(width) => left_width_clone.set(width),
+            | Err(e) => {
+                web_sys::console::warn_1(&format!("Failed to load left panel width: {}", e).into());
+            }
+        }
+        match tauri_api::get_panel_right_width().await {
+            | Ok(width) => right_width_clone.set(width),
+            | Err(e) => {
+                web_sys::console::warn_1(
+                    &format!("Failed to load right panel width: {}", e).into(),
+                );
+            }
+        }
+    });
+
     // Settings button handler
     let open_settings = {
         let show_settings = show_settings.clone();
@@ -74,7 +96,13 @@ pub fn App() -> impl IntoView {
                 }.into_any()
             } else {
                 view! {
-                    <MainView cubes=cubes raw_entries=raw_entries open_settings=open_settings />
+                    <MainView 
+                        cubes=cubes 
+                        raw_entries=raw_entries 
+                        open_settings=open_settings
+                        left_width=left_width
+                        right_width=right_width
+                    />
                 }.into_any()
             }
         }}
@@ -83,31 +111,12 @@ pub fn App() -> impl IntoView {
 
 #[component]
 fn MainView(
-    cubes: RwSignal<Vec<Cube>>, raw_entries: RwSignal<Vec<Raw>>,
+    cubes: RwSignal<Vec<Cube>>, 
+    raw_entries: RwSignal<Vec<Raw>>,
     open_settings: impl Fn(web_sys::MouseEvent) + 'static,
+    left_width: RwSignal<f64>,
+    right_width: RwSignal<f64>,
 ) -> impl IntoView {
-    let left_width = RwSignal::new(250.0);
-    let right_width = RwSignal::new(300.0);
-
-    // Load panel widths from settings on startup
-    let left_width_clone = left_width.clone();
-    let right_width_clone = right_width.clone();
-    spawn_local(async move {
-        match tauri_api::get_panel_left_width().await {
-            | Ok(width) => left_width_clone.set(width),
-            | Err(e) => {
-                web_sys::console::warn_1(&format!("Failed to load left panel width: {}", e).into());
-            }
-        }
-        match tauri_api::get_panel_right_width().await {
-            | Ok(width) => right_width_clone.set(width),
-            | Err(e) => {
-                web_sys::console::warn_1(
-                    &format!("Failed to load right panel width: {}", e).into(),
-                );
-            }
-        }
-    });
 
     // Debounce save timers
     let left_save_timeout = Rc::new(RefCell::new(None::<i32>));
