@@ -133,10 +133,10 @@ fn GlacierPanel(cubes: RwSignal<Vec<Cube>>) -> impl IntoView {
             title="Glacier"
             header_actions=view! {
                 <button
-                    class="p-1.5 text-white border-none rounded cursor-pointer flex items-center justify-center w-7 h-7 min-w-7 transition-colors duration-200 bg-[var(--color-primary,#007bff)] hover-bg-primary"
+                    class="p-0.5 text-white border-none rounded cursor-pointer flex items-center justify-center w-5 h-5 min-w-5 transition-colors duration-200 bg-[var(--color-primary,#007bff)] hover-bg-primary"
                     on:click=create_cube_action
                 >
-                    <Icon icon=LuPlus width="16" height="16" />
+                    <Icon icon=LuPlus width="12" height="12" />
                 </button>
             }.into_any()
         >
@@ -158,9 +158,9 @@ fn Workspace() -> impl IntoView {
             class="flex flex-col h-full border-r overflow-hidden border-[var(--color-border)] bg-[var(--color-workspace-bg)]"
         >
             <div
-                class="p-4 border-b border-[var(--color-border)] bg-[var(--color-panel-header-bg)]"
+                class="py-2 pl-3 pr-2 border-b border-[var(--color-border)] bg-[var(--color-panel-header-bg)]"
             >
-                <h2 class="m-0 text-base font-semibold text-[var(--color-text)]">"Workspace"</h2>
+                <h2 class="m-0 text-sm font-medium text-[var(--color-text)]">"Workspace"</h2>
             </div>
             <div class="flex-1 overflow-y-auto p-2">
                 <div class="p-8 min-h-full">
@@ -182,10 +182,10 @@ fn StreamPanel(
             title="Stream"
             header_actions=view! {
                 <button
-                    class="p-1.5 text-white border-none rounded cursor-pointer flex items-center justify-center w-7 h-7 min-w-7 transition-colors duration-200 bg-[var(--color-secondary,#6c757d)] hover-bg-secondary"
+                    class="p-0.5 text-white border-none rounded cursor-pointer flex items-center justify-center w-5 h-5 min-w-5 transition-colors duration-200 bg-[var(--color-secondary,#6c757d)] hover-bg-secondary"
                     on:click=open_settings
                 >
-                    <Icon icon=LuSettings width="16" height="16" />
+                    <Icon icon=LuSettings width="12" height="12" />
                 </button>
             }.into_any()
         >
