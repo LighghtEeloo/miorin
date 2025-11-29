@@ -44,6 +44,8 @@ pub struct PreOrder {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum OrderStyle {
+    /// Paragraph, e.g. text, text, text, ...
+    Paragraph,
     /// Bulleted list, e.g. *, **, ***, ...
     Bullet,
     /// One-indexed, e.g. 1, 2, 3, ...
@@ -68,7 +70,8 @@ pub struct Order {
 pub enum Point {
     Text(Text),
     Image(Image),
-    RawReference(RawReference),
+    RawRef(RawRef),
+    CubeRef(CubeRef),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -89,12 +92,20 @@ pub struct Text {
 pub struct Image {
     pub blob_id: BlobId,
     pub caption: Option<RichText>,
-    pub original_raw: Option<RawId>, // provenance
+    /// Provenance of the image.
+    pub original_raw: Option<RawId>,
 }
 
+/// Shown as an embedded "card" of a raw entry.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct RawReference {
-    pub raw_id: RawId, // show as an embedded "card"
+pub struct RawRef {
+    pub raw_id: RawId,
+}
+
+/// An embedded "card" or "container" of a cube.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct CubeRef {
+    pub cube_id: CubeId,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
