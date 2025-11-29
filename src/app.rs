@@ -7,6 +7,9 @@ use leptos_icons::Icon;
 use icondata::{LuPlus, LuSettings};
 use miorin_core::prelude::*;
 use wasm_bindgen_futures::spawn_local;
+use wasm_bindgen::JsCast;
+use std::rc::Rc;
+use std::cell::RefCell;
 
 #[component]
 pub fn App() -> impl IntoView {
@@ -85,17 +88,87 @@ fn MainView(
     let left_width = RwSignal::new(250.0);
     let right_width = RwSignal::new(300.0);
 
+    // Load panel widths from settings on startup
+    let left_width_clone = left_width.clone();
+    let right_width_clone = right_width.clone();
+    spawn_local(async move {
+        match tauri_api::get_panel_left_width().await {
+            Ok(width) => left_width_clone.set(width),
+            Err(e) => {
+                web_sys::console::warn_1(&format!("Failed to load left panel width: {}", e).into());
+            }
+        }
+        match tauri_api::get_panel_right_width().await {
+            Ok(width) => right_width_clone.set(width),
+            Err(e) => {
+                web_sys::console::warn_1(&format!("Failed to load right panel width: {}", e).into());
+            }
+        }
+    });
+
+    // Debounce save timers
+    let left_save_timeout = Rc::new(RefCell::new(None::<i32>));
+    let right_save_timeout = Rc::new(RefCell::new(None::<i32>));
+    
     let on_resize_left = {
         let left_width = left_width.clone();
+        let save_timeout = left_save_timeout.clone();
         std::rc::Rc::new(move |new_width: f64| {
             left_width.set(new_width);
+            // Debounce saves - clear existing timeout and set a new one
+            if let Some(timeout_id) = save_timeout.borrow_mut().take() {
+                let window = web_sys::window().unwrap();
+                window.clear_timeout_with_handle(timeout_id);
+            }
+            let save_timeout_clone = save_timeout.clone();
+            let left_width_for_save = left_width.clone();
+            let closure = wasm_bindgen::closure::Closure::wrap(Box::new(move || {
+                let width_to_save = left_width_for_save.get();
+                spawn_local(async move {
+                    if let Err(e) = tauri_api::set_panel_left_width(width_to_save).await {
+                        web_sys::console::error_1(&format!("Failed to save left panel width: {}", e).into());
+                    }
+                });
+                save_timeout_clone.borrow_mut().take();
+            }) as Box<dyn FnMut()>);
+            let timeout_id = web_sys::window().unwrap()
+                .set_timeout_with_callback_and_timeout_and_arguments_0(
+                    closure.as_ref().unchecked_ref(),
+                    500,
+                ).unwrap();
+            closure.forget();
+            *save_timeout.borrow_mut() = Some(timeout_id);
         }) as std::rc::Rc<dyn Fn(f64)>
     };
 
     let on_resize_right = {
         let right_width = right_width.clone();
+        let save_timeout = right_save_timeout.clone();
         std::rc::Rc::new(move |new_width: f64| {
             right_width.set(new_width);
+            // Debounce saves - clear existing timeout and set a new one
+            if let Some(timeout_id) = save_timeout.borrow_mut().take() {
+                let window = web_sys::window().unwrap();
+                window.clear_timeout_with_handle(timeout_id);
+            }
+            let save_timeout_clone = save_timeout.clone();
+            let right_width_for_save = right_width.clone();
+            let closure = wasm_bindgen::closure::Closure::wrap(Box::new(move || {
+                let width_to_save = right_width_for_save.get();
+                spawn_local(async move {
+                    if let Err(e) = tauri_api::set_panel_right_width(width_to_save).await {
+                        web_sys::console::error_1(&format!("Failed to save right panel width: {}", e).into());
+                    }
+                });
+                save_timeout_clone.borrow_mut().take();
+            }) as Box<dyn FnMut()>);
+            let timeout_id = web_sys::window().unwrap()
+                .set_timeout_with_callback_and_timeout_and_arguments_0(
+                    closure.as_ref().unchecked_ref(),
+                    500,
+                ).unwrap();
+            closure.forget();
+            *save_timeout.borrow_mut() = Some(timeout_id);
         }) as std::rc::Rc<dyn Fn(f64)>
     };
 

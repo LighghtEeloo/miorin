@@ -8,6 +8,8 @@ use crate::blob::{store_blob_from_file, generate_thumbnail};
 const SETTINGS_STORE_NAME: &str = "settings.json";
 const WATCH_PATHS_KEY: &str = "watch_paths";
 const DEVTOOLS_VISIBLE_KEY: &str = "devtools_visible";
+const PANEL_LEFT_WIDTH_KEY: &str = "panel_left_width";
+const PANEL_RIGHT_WIDTH_KEY: &str = "panel_right_width";
 
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
 pub struct WatchPathConfig {
@@ -152,6 +154,74 @@ pub async fn get_devtools_visible_cmd(app: AppHandle) -> Result<bool, String> {
 #[tauri::command]
 pub async fn set_devtools_visible_cmd(app: AppHandle, visible: bool) -> Result<(), String> {
     set_devtools_visible(&app, visible).await
+}
+
+/// Get panel left width setting
+pub async fn get_panel_left_width(app: &AppHandle) -> Result<f64, String> {
+    let store = get_store(app).await?;
+    
+    if let Some(value) = store.get(PANEL_LEFT_WIDTH_KEY) {
+        if let Some(width) = value.as_f64() {
+            return Ok(width);
+        }
+    }
+    
+    // Default to 250.0 if not set
+    Ok(250.0)
+}
+
+/// Set panel left width setting
+pub async fn set_panel_left_width(app: &AppHandle, width: f64) -> Result<(), String> {
+    let store = get_store(app).await?;
+    store.set(PANEL_LEFT_WIDTH_KEY.to_string(), serde_json::json!(width));
+    store.save().map_err(|e| format!("Failed to save settings: {}", e))?;
+    Ok(())
+}
+
+/// Get panel right width setting
+pub async fn get_panel_right_width(app: &AppHandle) -> Result<f64, String> {
+    let store = get_store(app).await?;
+    
+    if let Some(value) = store.get(PANEL_RIGHT_WIDTH_KEY) {
+        if let Some(width) = value.as_f64() {
+            return Ok(width);
+        }
+    }
+    
+    // Default to 300.0 if not set
+    Ok(300.0)
+}
+
+/// Set panel right width setting
+pub async fn set_panel_right_width(app: &AppHandle, width: f64) -> Result<(), String> {
+    let store = get_store(app).await?;
+    store.set(PANEL_RIGHT_WIDTH_KEY.to_string(), serde_json::json!(width));
+    store.save().map_err(|e| format!("Failed to save settings: {}", e))?;
+    Ok(())
+}
+
+/// Get panel left width setting (Tauri command)
+#[tauri::command]
+pub async fn get_panel_left_width_cmd(app: AppHandle) -> Result<f64, String> {
+    get_panel_left_width(&app).await
+}
+
+/// Set panel left width setting (Tauri command)
+#[tauri::command]
+pub async fn set_panel_left_width_cmd(app: AppHandle, width: f64) -> Result<(), String> {
+    set_panel_left_width(&app, width).await
+}
+
+/// Get panel right width setting (Tauri command)
+#[tauri::command]
+pub async fn get_panel_right_width_cmd(app: AppHandle) -> Result<f64, String> {
+    get_panel_right_width(&app).await
+}
+
+/// Set panel right width setting (Tauri command)
+#[tauri::command]
+pub async fn set_panel_right_width_cmd(app: AppHandle, width: f64) -> Result<(), String> {
+    set_panel_right_width(&app, width).await
 }
 
 /// Expand shell variables and tilde in a path string

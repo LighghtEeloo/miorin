@@ -277,3 +277,23 @@ pub async fn get_devtools_visible_setting() -> Result<bool, String> {
 pub async fn set_devtools_visible_setting(visible: bool) -> Result<(), String> {
     invoke_tauri("set_devtools_visible_cmd", serde_json::json!({ "visible": visible })).await
 }
+
+/// Get panel left width setting
+pub async fn get_panel_left_width() -> Result<f64, String> {
+    invoke_tauri("get_panel_left_width_cmd", serde_json::json!({})).await
+}
+
+/// Set panel left width setting
+pub async fn set_panel_left_width(width: f64) -> Result<(), String> {
+    invoke_tauri("set_panel_left_width_cmd", serde_json::json!({ "width": width })).await
+}
+
+/// Get panel right width setting
+pub async fn get_panel_right_width() -> Result<f64, String> {
+    invoke_tauri("get_panel_right_width_cmd", serde_json::json!({})).await
+}
+
+/// Set panel right width setting
+pub async fn set_panel_right_width(width: f64) -> Result<(), String> {
+    invoke_tauri("set_panel_right_width_cmd", serde_json::json!({ "width": width })).await
+}
