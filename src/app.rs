@@ -1,9 +1,10 @@
-use crate::panel;
-use crate::card;
+use crate::ui::{
+    button, card,
+    color::ColorVariant,
+    filter::{FilterButton, FilterMode},
+    panel,
+};
 use crate::tauri_api;
-use crate::button;
-use crate::color::ColorVariant;
-use crate::filter::{FilterButton, FilterMode};
 use leptos::prelude::*;
 use leptos_icons::Icon;
 use icondata::{LuPlus, LuSettings};
@@ -96,9 +97,9 @@ pub fn App() -> impl IntoView {
                 }.into_any()
             } else {
                 view! {
-                    <MainView 
-                        cubes=cubes 
-                        raw_entries=raw_entries 
+                    <MainView
+                        cubes=cubes
+                        raw_entries=raw_entries
                         open_settings=open_settings
                         left_width=left_width
                         right_width=right_width
@@ -111,13 +112,10 @@ pub fn App() -> impl IntoView {
 
 #[component]
 fn MainView(
-    cubes: RwSignal<Vec<Cube>>, 
-    raw_entries: RwSignal<Vec<Raw>>,
-    open_settings: impl Fn(web_sys::MouseEvent) + 'static,
-    left_width: RwSignal<f64>,
+    cubes: RwSignal<Vec<Cube>>, raw_entries: RwSignal<Vec<Raw>>,
+    open_settings: impl Fn(web_sys::MouseEvent) + 'static, left_width: RwSignal<f64>,
     right_width: RwSignal<f64>,
 ) -> impl IntoView {
-
     // Debounce save timers
     let left_save_timeout = Rc::new(RefCell::new(None::<i32>));
     let right_save_timeout = Rc::new(RefCell::new(None::<i32>));

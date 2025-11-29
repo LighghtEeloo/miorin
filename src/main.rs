@@ -1,12 +1,15 @@
 mod app;
-mod tauri_api;
 mod settings;
-mod panel;
-mod card;
-mod button;
-mod color;
-mod toggle;
-mod filter;
+mod tauri_api;
+
+mod ui {
+    pub mod panel;
+    pub mod card;
+    pub mod button;
+    pub mod color;
+    pub mod toggle;
+    pub mod filter;
+}
 
 use app::*;
 use leptos::prelude::*;

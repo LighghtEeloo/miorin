@@ -1,7 +1,5 @@
 use crate::tauri_api;
-use crate::button;
-use crate::color::ColorVariant;
-use crate::toggle;
+use crate::ui::{button, color::ColorVariant, toggle};
 use leptos::prelude::*;
 use leptos_icons::Icon;
 use icondata::{LuDownload, LuEye, LuEyeOff, LuFolderOpen, LuPlus, LuRefreshCw, LuTrash2, LuX};

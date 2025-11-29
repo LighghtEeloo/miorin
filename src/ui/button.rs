@@ -1,5 +1,5 @@
 use leptos::prelude::*;
-use crate::color::ColorVariant;
+use crate::ui::color::ColorVariant;
 
 #[component]
 pub fn ActionButton(

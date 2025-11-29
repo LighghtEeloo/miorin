@@ -1,5 +1,4 @@
-use crate::button;
-use crate::color::ColorVariant;
+use crate::ui::{button, color::ColorVariant};
 use leptos::prelude::*;
 use leptos_icons::Icon;
 use icondata::LuSlidersHorizontal;
