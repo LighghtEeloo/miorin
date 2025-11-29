@@ -2,7 +2,6 @@ use crate::tauri_api;
 use leptos::prelude::*;
 use leptos_icons::Icon;
 use icondata::{LuDownload, LuEye, LuEyeOff, LuFolderOpen, LuPlus, LuRefreshCw, LuTrash2, LuX};
-use styled::style;
 use wasm_bindgen_futures::spawn_local;
 use wasm_bindgen::JsCast;
 
@@ -14,136 +13,81 @@ fn WatchPathItem(
     on_remove: impl Fn(String) + 'static,
     on_import: impl Fn(String) + 'static,
 ) -> impl IntoView {
-    let path_item_styles = style! {
-        .path-item {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 10px;
-            margin-bottom: 8px;
-            background-color: var(--color-bg-secondary, #f8f9fa);
-            border-radius: 4px;
-            border: 1px solid var(--color-border, #dee2e6);
-        }
-        .path-text {
-            flex: 1;
-            margin-right: 10px;
-            word-break: break-all;
-            color: var(--color-text-secondary, #6c757d);
-            font-family: monospace;
-            font-size: 13px;
-        }
-        .button {
-            padding: 8px 16px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: 500;
-            transition: background-color 0.2s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
-        }
-        .button-danger {
-            background-color: var(--color-danger, #dc3545);
-            color: white;
-            padding: 8px;
-        }
-        .button-danger:hover {
-            background-color: var(--color-danger-hover, #c82333);
-        }
-        .button-import {
-            background-color: var(--color-primary, #007bff);
-            color: white;
-            padding: 8px;
-        }
-        .button-import:hover {
-            background-color: var(--color-primary-hover, #0056b3);
-        }
-        .toggle-group {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        .toggle-switch {
-            position: relative;
-            display: inline-block;
-            width: 44px;
-            height: 24px;
-        }
-        .toggle-switch input {
-            opacity: 0;
-            width: 0;
-            height: 0;
-        }
-        .toggle-slider {
-            position: absolute;
-            cursor: pointer;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: var(--color-toggle-bg, #ccc);
-            transition: 0.3s;
-            border-radius: 24px;
-        }
-        .toggle-slider:before {
-            position: absolute;
-            content: "";
-            height: 18px;
-            width: 18px;
-            left: 3px;
-            bottom: 3px;
-            background-color: white;
-            transition: 0.3s;
-            border-radius: 50%;
-        }
-        .toggle-switch input:checked + .toggle-slider {
-            background-color: var(--color-primary, #007bff);
-        }
-        .toggle-switch input:checked + .toggle-slider:before {
-            transform: translateX(20px);
-        }
-        .toggle-switch input:focus + .toggle-slider {
-            box-shadow: 0 0 1px var(--color-primary, #007bff);
-        }
-    };
-
     let path = config.path.clone();
     let enabled = config.enabled;
     let path_for_toggle = path.clone();
     let path_for_remove = path.clone();
     let path_for_import = path.clone();
 
-    styled::view! { path_item_styles,
-        <li class="path-item">
-                <div class="toggle-group" style="flex: 1; margin-right: 10px;">
-                    <label class="toggle-switch">
-                        <input
-                            type="checkbox"
-                            checked=enabled
-                            on:change=move |_| on_toggle(path_for_toggle.clone(), !enabled)
-                        />
-                        <span class="toggle-slider"></span>
-                    </label>
-                    <span class="path-text">{path}</span>
-                </div>
-                <div style="display: flex; gap: 8px;">
-                    <button
-                        class="button button-import"
-                        on:click=move |_| on_import(path_for_import.clone())
+    view! {
+        <li 
+            class="flex items-center justify-between p-2.5 mb-2 rounded border"
+            style="background-color: var(--color-bg-secondary, #f8f9fa); border-color: var(--color-border, #dee2e6);"
+        >
+            <div class="flex items-center gap-2 flex-1 mr-2.5">
+                <label class="relative inline-block w-11 h-6">
+                    <input
+                        type="checkbox"
+                        class="opacity-0 w-0 h-0"
+                        checked=enabled
+                        on:change=move |_| on_toggle(path_for_toggle.clone(), !enabled)
+                    />
+                    <span 
+                        class="absolute cursor-pointer top-0 left-0 right-0 bottom-0 rounded-full transition-all duration-300"
+                        style=if enabled { "background-color: var(--color-primary, #007bff);" } else { "background-color: var(--color-toggle-bg, #ccc);" }
                     >
-                        <Icon icon=LuDownload width="16" height="16" />
-                    </button>
-                    <button
-                        class="button button-danger"
-                        on:click=move |_| on_remove(path_for_remove.clone())
-                    >
-                        <Icon icon=LuTrash2 width="16" height="16" />
-                    </button>
-                </div>
+                        <span 
+                            class="absolute h-[18px] w-[18px] left-[3px] bottom-[3px] bg-white rounded-full transition-all duration-300"
+                            style=if enabled { "transform: translateX(20px);" } else { "transform: translateX(0);" }
+                        ></span>
+                    </span>
+                </label>
+                <span class="flex-1 break-all text-xs font-mono" style="color: var(--color-text-secondary, #6c757d);">{path}</span>
+            </div>
+            <div class="flex gap-2">
+                <button
+                    class="p-2 border-none rounded cursor-pointer text-sm font-medium transition-colors duration-200 flex items-center justify-center gap-1.5 text-white"
+                    style="background-color: var(--color-primary, #007bff);"
+                    on:mouseenter=move |ev| {
+                        if let Some(target) = ev.target() {
+                            if let Ok(el) = target.dyn_into::<web_sys::HtmlElement>() {
+                                el.style().set_property("background-color", "var(--color-primary-hover, #0056b3)").ok();
+                            }
+                        }
+                    }
+                    on:mouseleave=move |ev| {
+                        if let Some(target) = ev.target() {
+                            if let Ok(el) = target.dyn_into::<web_sys::HtmlElement>() {
+                                el.style().set_property("background-color", "var(--color-primary, #007bff)").ok();
+                            }
+                        }
+                    }
+                    on:click=move |_| on_import(path_for_import.clone())
+                >
+                    <Icon icon=LuDownload width="16" height="16" />
+                </button>
+                <button
+                    class="p-2 border-none rounded cursor-pointer text-sm font-medium transition-colors duration-200 flex items-center justify-center gap-1.5 text-white"
+                    style="background-color: var(--color-danger, #dc3545);"
+                    on:mouseenter=move |ev| {
+                        if let Some(target) = ev.target() {
+                            if let Ok(el) = target.dyn_into::<web_sys::HtmlElement>() {
+                                el.style().set_property("background-color", "var(--color-danger-hover, #c82333)").ok();
+                            }
+                        }
+                    }
+                    on:mouseleave=move |ev| {
+                        if let Some(target) = ev.target() {
+                            if let Ok(el) = target.dyn_into::<web_sys::HtmlElement>() {
+                                el.style().set_property("background-color", "var(--color-danger, #dc3545)").ok();
+                            }
+                        }
+                    }
+                    on:click=move |_| on_remove(path_for_remove.clone())
+                >
+                    <Icon icon=LuTrash2 width="16" height="16" />
+                </button>
+            </div>
         </li>
     }
 }
@@ -153,68 +97,32 @@ fn ProgressOrError(
     importing_path: Option<String>,
     error_message: Option<String>,
 ) -> impl IntoView {
-    let progress_styles = style! {
-        .progress-container {
-            margin-top: 8px;
-            padding: 8px 12px;
-            background-color: var(--color-bg-secondary, #f8f9fa);
-            border: 1px solid var(--color-border, #dee2e6);
-            border-radius: 4px;
-        }
-        .progress-bar-container {
-            width: 100%;
-            height: 8px;
-            background-color: var(--color-border, #dee2e6);
-            border-radius: 4px;
-            overflow: hidden;
-            margin-top: 8px;
-            position: relative;
-        }
-        .progress-bar {
-            height: 100%;
-            width: 100%;
-            background-color: var(--color-primary, #007bff);
-            border-radius: 4px;
-            opacity: 0.8;
-        }
-        .progress-text {
-            font-size: 13px;
-            color: var(--color-text-secondary, #6c757d);
-            margin-bottom: 4px;
-        }
-        .error-message {
-            margin-top: 8px;
-            padding: 8px 12px;
-            background-color: var(--color-error-bg, #fee);
-            color: var(--color-error-text, #c33);
-            border: 1px solid var(--color-error-border, #fcc);
-            border-radius: 4px;
-            font-size: 13px;
-        }
-    };
-
     if let Some(path) = importing_path {
-        styled::view! { progress_styles,
-            <div class="progress-container">
-                <div class="progress-text">
+        view! {
+            <div 
+                class="mt-2 p-2 rounded border"
+                style="background-color: var(--color-bg-secondary, #f8f9fa); border-color: var(--color-border, #dee2e6);"
+            >
+                <div class="text-xs mb-1" style="color: var(--color-text-secondary, #6c757d);">
                     {format!("Importing files from {}...", path)}
                 </div>
-                <div class="progress-bar-container">
-                    <div class="progress-bar" style="width: 100%; animation: pulse 1.5s ease-in-out infinite;"></div>
+                <div 
+                    class="w-full h-2 rounded overflow-hidden mt-2 relative"
+                    style="background-color: var(--color-border, #dee2e6);"
+                >
+                    <div 
+                        class="h-full w-full rounded opacity-80 animate-pulse"
+                        style="background-color: var(--color-primary, #007bff);"
+                    ></div>
                 </div>
-                <style>
-                    {r#"
-                    @keyframes pulse {
-                        0%, 100% { opacity: 0.6; }
-                        50% { opacity: 1; }
-                    }
-                    "#}
-                </style>
             </div>
         }.into_any()
     } else if let Some(msg) = error_message {
-        styled::view! { progress_styles,
-            <div class="error-message">
+        view! {
+            <div 
+                class="mt-2 p-2 rounded border text-xs"
+                style="background-color: var(--color-error-bg, #fee); color: var(--color-error-text, #c33); border-color: var(--color-error-border, #fcc);"
+            >
                 {msg}
             </div>
         }.into_any()
@@ -228,117 +136,77 @@ fn AddPathInput(
     new_path: RwSignal<String>,
     on_add: impl Fn() + Clone + 'static,
 ) -> impl IntoView {
-    let add_path_styles = style! {
-        .add-path-group {
-            display: flex;
-            gap: 8px;
-            margin-top: 10px;
-        }
-        .add-path-input {
-            flex: 1;
-        }
-        .form-control {
-            width: 100%;
-            padding: 8px 12px;
-            border: 1px solid var(--color-border, #ccc);
-            border-radius: 4px;
-            background-color: var(--color-bg);
-            color: var(--color-text);
-            font-size: 14px;
-        }
-        .form-control:focus {
-            outline: none;
-            border-color: var(--color-primary, #007bff);
-        }
-        .button {
-            padding: 8px 16px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: 500;
-            transition: background-color 0.2s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
-        }
-        .button-primary {
-            background-color: var(--color-primary, #007bff);
-            color: white;
-        }
-        .button-primary:hover {
-            background-color: var(--color-primary-hover, #0056b3);
-        }
-        .button-icon-only {
-            padding: 8px;
-        }
-        .button-primary.button-icon-only {
-            padding: 8px;
-            width: 32px;
-            height: 32px;
-            min-width: 32px;
-        }
-    };
-
-    styled::view! { add_path_styles,
-        <div class="add-path-group">
-                <input
-                    type="text"
-                    class="form-control add-path-input"
-                    placeholder="Enter path to watch (e.g., ~/Downloads/Pic)"
-                    prop:value=move || new_path.get()
-                    on:input=move |ev| {
-                        if let Some(target) = ev.target() {
-                            if let Ok(input) = target.dyn_into::<web_sys::HtmlInputElement>() {
-                                new_path.set(input.value());
-                            }
+    view! {
+        <div class="flex gap-2 mt-2.5">
+            <input
+                type="text"
+                class="flex-1 w-full px-3 py-2 border rounded text-sm outline-none"
+                style="border-color: var(--color-border, #ccc); background-color: var(--color-bg); color: var(--color-text);"
+                placeholder="Enter path to watch (e.g., ~/Downloads/Pic)"
+                prop:value=move || new_path.get()
+                on:input=move |ev| {
+                    if let Some(target) = ev.target() {
+                        if let Ok(input) = target.dyn_into::<web_sys::HtmlInputElement>() {
+                            new_path.set(input.value());
                         }
                     }
-                    on:keypress={
-                        let on_add_clone = on_add.clone();
-                        move |ev| {
-                            if ev.key_code() == 13 {
-                                on_add_clone();
-                            }
+                }
+                on:keypress={
+                    let on_add_clone = on_add.clone();
+                    move |ev| {
+                        if ev.key_code() == 13 {
+                            on_add_clone();
                         }
                     }
-                />
-                <button class="button button-primary button-icon-only" on:click=move |_| on_add()>
-                    <Icon icon=LuPlus width="16" height="16" />
-                </button>
+                }
+            />
+            <button 
+                class="p-2 border-none rounded cursor-pointer text-sm font-medium transition-colors duration-200 flex items-center justify-center gap-1.5 text-white w-8 h-8 min-w-8"
+                style="background-color: var(--color-primary, #007bff);"
+                on:mouseenter=move |ev| {
+                    if let Some(target) = ev.target() {
+                        if let Ok(el) = target.dyn_into::<web_sys::HtmlElement>() {
+                            el.style().set_property("background-color", "var(--color-primary-hover, #0056b3)").ok();
+                        }
+                    }
+                }
+                on:mouseleave=move |ev| {
+                    if let Some(target) = ev.target() {
+                        if let Ok(el) = target.dyn_into::<web_sys::HtmlElement>() {
+                            el.style().set_property("background-color", "var(--color-primary, #007bff)").ok();
+                        }
+                    }
+                }
+                on:click=move |_| on_add()
+            >
+                <Icon icon=LuPlus width="16" height="16" />
+            </button>
         </div>
     }
 }
 
 #[component]
 fn CloseButton(close_settings: impl Fn() + 'static) -> impl IntoView {
-    let close_button_styles = style! {
-        .close-button {
-            position: fixed;
-            top: 20px;
-            left: 20px;
-            padding: 8px;
-            background-color: var(--color-secondary, #6c757d);
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: 500;
-            transition: background-color 0.2s;
-            z-index: 1001;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .close-button:hover {
-            background-color: var(--color-secondary-hover, #5a6268);
-        }
-    };
-
-    styled::view! { close_button_styles,
-        <button class="close-button" on:click=move |_| close_settings()>
+    view! {
+        <button 
+            class="fixed top-5 left-5 p-2 text-white border-none rounded cursor-pointer text-sm font-medium transition-colors duration-200 z-[1001] flex items-center justify-center"
+            style="background-color: var(--color-secondary, #6c757d);"
+            on:mouseenter=move |ev| {
+                if let Some(target) = ev.target() {
+                    if let Ok(el) = target.dyn_into::<web_sys::HtmlElement>() {
+                        el.style().set_property("background-color", "var(--color-secondary-hover, #5a6268)").ok();
+                    }
+                }
+            }
+            on:mouseleave=move |ev| {
+                if let Some(target) = ev.target() {
+                    if let Ok(el) = target.dyn_into::<web_sys::HtmlElement>() {
+                        el.style().set_property("background-color", "var(--color-secondary, #6c757d)").ok();
+                    }
+                }
+            }
+            on:click=move |_| close_settings()
+        >
             <Icon icon=LuX width="20" height="20" />
         </button>
     }
@@ -349,115 +217,6 @@ pub fn Settings(
     close_settings: impl Fn() + 'static,
     raw_entries_signal: RwSignal<Vec<miorin_core::prelude::Raw>>,
 ) -> impl IntoView {
-    let container_styles = style! {
-        .settings-wrapper {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            width: 100%;
-            height: 100vh;
-            overflow-y: auto;
-            background-color: var(--color-bg);
-            z-index: 1000;
-        }
-        .settings-container {
-            padding: 60px 20px 20px 20px;
-            max-width: 800px;
-            margin: 0 auto;
-            background-color: var(--color-bg);
-            color: var(--color-text);
-            font-family: system-ui, -apple-system, sans-serif;
-        }
-        .section {
-            margin-bottom: 30px;
-        }
-        .section-title {
-            font-size: 18px;
-            font-weight: 600;
-            margin-bottom: 15px;
-            color: var(--color-text);
-        }
-        .section-description {
-            margin-bottom: 15px;
-            color: var(--color-text-secondary, #6c757d);
-            font-size: 13px;
-        }
-        .path-list {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-        }
-        .debug-section {
-            margin-top: 40px;
-            padding-top: 30px;
-            border-top: 1px solid var(--color-border, #dee2e6);
-        }
-        .debug-button {
-            padding: 10px 20px;
-            background-color: var(--color-danger, #dc3545);
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: 500;
-            transition: background-color 0.2s;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        .debug-button:hover {
-            background-color: var(--color-danger-hover, #c82333);
-        }
-        .debug-button:disabled {
-            background-color: var(--color-text-secondary, #6c757d);
-            cursor: not-allowed;
-        }
-        .toggle-switch {
-            position: relative;
-            display: inline-block;
-            width: 44px;
-            height: 24px;
-        }
-        .toggle-switch input {
-            opacity: 0;
-            width: 0;
-            height: 0;
-        }
-        .toggle-slider {
-            position: absolute;
-            cursor: pointer;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: var(--color-toggle-bg, #ccc);
-            transition: 0.3s;
-            border-radius: 24px;
-        }
-        .toggle-slider:before {
-            position: absolute;
-            content: "";
-            height: 18px;
-            width: 18px;
-            left: 3px;
-            bottom: 3px;
-            background-color: white;
-            transition: 0.3s;
-            border-radius: 50%;
-        }
-        .toggle-switch input:checked + .toggle-slider {
-            background-color: var(--color-primary, #007bff);
-        }
-        .toggle-switch input:checked + .toggle-slider:before {
-            transform: translateX(20px);
-        }
-        .toggle-switch input:focus + .toggle-slider {
-            box-shadow: 0 0 1px var(--color-primary, #007bff);
-        }
-    };
 
     // Watch paths state
     let watch_paths = RwSignal::new(Vec::<tauri_api::WatchPathConfig>::new());
@@ -647,18 +406,24 @@ pub fn Settings(
         }
     };
 
-    styled::view! { container_styles,
-        <div class="settings-wrapper">
+    view! {
+        <div 
+            class="fixed top-0 left-0 right-0 bottom-0 w-full h-screen overflow-y-auto z-[1000]"
+            style="background-color: var(--color-bg);"
+        >
             <CloseButton close_settings=close_settings />
-            <div class="settings-container">
-                <div class="section">
-                    <h2 class="section-title">Watch Paths</h2>
-                    <p class="section-description">
+            <div 
+                class="pt-[60px] px-5 pb-5 max-w-[800px] mx-auto"
+                style="background-color: var(--color-bg); color: var(--color-text); font-family: system-ui, -apple-system, sans-serif;"
+            >
+                <div class="mb-8">
+                    <h2 class="text-lg font-semibold mb-4" style="color: var(--color-text);">Watch Paths</h2>
+                    <p class="mb-4 text-xs" style="color: var(--color-text-secondary, #6c757d);">
                         Directories to watch for new files.
                         Only files directly in these directories (not in subdirectories) will be monitored.
                         Toggle each path to enable or disable watching.
                     </p>
-                    <ul class="path-list">
+                    <ul class="list-none p-0 m-0">
                         <For
                             each=move || watch_paths.get()
                             key=|config| config.path.clone()
@@ -684,18 +449,40 @@ pub fn Settings(
                         }.into_any()
                     }}
                 </div>
-                <div class="section debug-section">
-                    <h2 class="section-title">Debug</h2>
-                    <p class="section-description">
+                <div class="mb-8 mt-10 pt-8 border-t" style="border-color: var(--color-border, #dee2e6);">
+                    <h2 class="text-lg font-semibold mb-4" style="color: var(--color-text);">Debug</h2>
+                    <p class="mb-4 text-xs" style="color: var(--color-text-secondary, #6c757d);">
                         Debug functions for development and testing.
                     </p>
-                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <div class="flex gap-2.5 flex-wrap">
                         {move || {
                             let clearing_entries_value = clearing_entries.get();
                             let clearing_entries_signal = clearing_entries.clone();
                             view! {
                                 <button
-                                    class="debug-button"
+                                    class="px-5 py-2.5 text-white border-none rounded cursor-pointer text-sm font-medium transition-colors duration-200 flex items-center gap-2 disabled:cursor-not-allowed"
+                                    style=move || format!(
+                                        "background-color: {};",
+                                        if clearing_entries_value { "var(--color-text-secondary, #6c757d)" } else { "var(--color-danger, #dc3545)" }
+                                    )
+                                    on:mouseenter=move |ev| {
+                                        if !clearing_entries_value {
+                                            if let Some(target) = ev.target() {
+                                                if let Ok(el) = target.dyn_into::<web_sys::HtmlElement>() {
+                                                    el.style().set_property("background-color", "var(--color-danger-hover, #c82333)").ok();
+                                                }
+                                            }
+                                        }
+                                    }
+                                    on:mouseleave=move |ev| {
+                                        if !clearing_entries_value {
+                                            if let Some(target) = ev.target() {
+                                                if let Ok(el) = target.dyn_into::<web_sys::HtmlElement>() {
+                                                    el.style().set_property("background-color", "var(--color-danger, #dc3545)").ok();
+                                                }
+                                            }
+                                        }
+                                    }
                                     disabled=clearing_entries_value
                                     on:click=move |_| {
                                         clearing_entries_signal.set(true);
@@ -732,7 +519,29 @@ pub fn Settings(
                             let has_data = settings_storage_data.get().is_some();
                             view! {
                                 <button
-                                    class="debug-button"
+                                    class="px-5 py-2.5 text-white border-none rounded cursor-pointer text-sm font-medium transition-colors duration-200 flex items-center gap-2 disabled:cursor-not-allowed"
+                                    style=move || format!(
+                                        "background-color: {};",
+                                        if showing_settings_storage_value { "var(--color-text-secondary, #6c757d)" } else { "var(--color-danger, #dc3545)" }
+                                    )
+                                    on:mouseenter=move |ev| {
+                                        if !showing_settings_storage_value {
+                                            if let Some(target) = ev.target() {
+                                                if let Ok(el) = target.dyn_into::<web_sys::HtmlElement>() {
+                                                    el.style().set_property("background-color", "var(--color-danger-hover, #c82333)").ok();
+                                                }
+                                            }
+                                        }
+                                    }
+                                    on:mouseleave=move |ev| {
+                                        if !showing_settings_storage_value {
+                                            if let Some(target) = ev.target() {
+                                                if let Ok(el) = target.dyn_into::<web_sys::HtmlElement>() {
+                                                    el.style().set_property("background-color", "var(--color-danger, #dc3545)").ok();
+                                                }
+                                            }
+                                        }
+                                    }
                                     disabled=showing_settings_storage_value
                                     on:click=move |_| {
                                         // Toggle: if data is already shown, hide it
@@ -773,7 +582,22 @@ pub fn Settings(
                         {move || {
                             view! {
                                 <button
-                                    class="debug-button"
+                                    class="px-5 py-2.5 text-white border-none rounded cursor-pointer text-sm font-medium transition-colors duration-200 flex items-center gap-2"
+                                    style="background-color: var(--color-danger, #dc3545);"
+                                    on:mouseenter=move |ev| {
+                                        if let Some(target) = ev.target() {
+                                            if let Ok(el) = target.dyn_into::<web_sys::HtmlElement>() {
+                                                el.style().set_property("background-color", "var(--color-danger-hover, #c82333)").ok();
+                                            }
+                                        }
+                                    }
+                                    on:mouseleave=move |ev| {
+                                        if let Some(target) = ev.target() {
+                                            if let Ok(el) = target.dyn_into::<web_sys::HtmlElement>() {
+                                                el.style().set_property("background-color", "var(--color-danger, #dc3545)").ok();
+                                            }
+                                        }
+                                    }
                                     on:click=move |_| {
                                         // Force refresh by reloading the page
                                         web_sys::window()
@@ -788,7 +612,22 @@ pub fn Settings(
                         {move || {
                             view! {
                                 <button
-                                    class="debug-button"
+                                    class="px-5 py-2.5 text-white border-none rounded cursor-pointer text-sm font-medium transition-colors duration-200 flex items-center gap-2"
+                                    style="background-color: var(--color-danger, #dc3545);"
+                                    on:mouseenter=move |ev| {
+                                        if let Some(target) = ev.target() {
+                                            if let Ok(el) = target.dyn_into::<web_sys::HtmlElement>() {
+                                                el.style().set_property("background-color", "var(--color-danger-hover, #c82333)").ok();
+                                            }
+                                        }
+                                    }
+                                    on:mouseleave=move |ev| {
+                                        if let Some(target) = ev.target() {
+                                            if let Ok(el) = target.dyn_into::<web_sys::HtmlElement>() {
+                                                el.style().set_property("background-color", "var(--color-danger, #dc3545)").ok();
+                                            }
+                                        }
+                                    }
                                     on:click=move |_| {
                                         spawn_local(async move {
                                             match tauri_api::reveal_data_folder().await {
@@ -814,7 +653,22 @@ pub fn Settings(
                         {move || {
                             view! {
                                 <button
-                                    class="debug-button"
+                                    class="px-5 py-2.5 text-white border-none rounded cursor-pointer text-sm font-medium transition-colors duration-200 flex items-center gap-2"
+                                    style="background-color: var(--color-danger, #dc3545);"
+                                    on:mouseenter=move |ev| {
+                                        if let Some(target) = ev.target() {
+                                            if let Ok(el) = target.dyn_into::<web_sys::HtmlElement>() {
+                                                el.style().set_property("background-color", "var(--color-danger-hover, #c82333)").ok();
+                                            }
+                                        }
+                                    }
+                                    on:mouseleave=move |ev| {
+                                        if let Some(target) = ev.target() {
+                                            if let Ok(el) = target.dyn_into::<web_sys::HtmlElement>() {
+                                                el.style().set_property("background-color", "var(--color-danger, #dc3545)").ok();
+                                            }
+                                        }
+                                    }
                                     on:click=move |_| {
                                         spawn_local(async move {
                                             if let Err(e) = tauri_api::toggle_devtools().await {
@@ -836,9 +690,9 @@ pub fn Settings(
                         settings_storage_data_value.map(|data| {
                             let data_clone = data.clone();
                             view! {
-                                <div style="margin-top: 20px; background-color: transparent; border-radius: 4px; border: 1px solid var(--color-border, #dee2e6);">
-                                    <h3 style="margin: 0; padding: 15px 15px 10px 15px; font-size: 14px; font-weight: 600;">Settings Storage State:</h3>
-                                    <pre style="margin: 0; padding: 0 15px 15px 15px; background-color: var(--color-bg, #ffffff); overflow-x: auto; font-family: monospace; font-size: 12px; white-space: pre-wrap; word-wrap: break-word; overflow-wrap: break-word; line-height: 1.4;">{data_clone}</pre>
+                                <div class="mt-5 bg-transparent rounded border p-0" style="border-color: var(--color-border, #dee2e6);">
+                                    <h3 class="m-0 px-4 pt-4 pb-2.5 text-sm font-semibold">Settings Storage State:</h3>
+                                    <pre class="m-0 px-4 pb-4 bg-white overflow-x-auto font-mono text-xs whitespace-pre-wrap break-words leading-snug" style="background-color: var(--color-bg, #ffffff);">{data_clone}</pre>
                                 </div>
                             }
                         })

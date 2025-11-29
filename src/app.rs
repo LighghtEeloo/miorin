@@ -5,7 +5,6 @@ use leptos::prelude::*;
 use leptos_icons::Icon;
 use icondata::{LuPlus, LuSettings};
 use miorin_core::prelude::*;
-use styled::style;
 use wasm_bindgen_futures::spawn_local;
 
 #[component]
@@ -13,19 +12,11 @@ fn MainView(
     cubes: RwSignal<Vec<Cube>>, raw_entries: RwSignal<Vec<Raw>>,
     open_settings: impl Fn(web_sys::MouseEvent) + 'static,
 ) -> impl IntoView {
-    let app_container_styles = style! {
-        .app-container {
-            display: grid;
-            grid-template-columns: 250px 1fr 300px;
-            height: 100vh;
-            max-height: 100vh;
-            overflow: hidden;
-            background-color: var(--color-bg);
-        }
-    };
-
-    styled::view! { app_container_styles,
-        <div class="app-container">
+    view! {
+        <div
+            class="grid h-screen max-h-screen overflow-hidden"
+            style="grid-template-columns: 250px 1fr 300px; background-color: var(--color-bg);"
+        >
             <GlacierPanel cubes=cubes />
             <Workspace />
             <StreamPanel raw_entries=raw_entries open_settings=open_settings />
@@ -142,7 +133,8 @@ fn GlacierPanel(cubes: RwSignal<Vec<Cube>>) -> impl IntoView {
             title="Glacier"
             header_actions=view! {
                 <button
-                    style="padding: 6px; background: var(--color-primary, #007bff); color: white; border: none; border-radius: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; min-width: 28px; transition: background-color 0.2s;"
+                    class="p-1.5 text-white border-none rounded cursor-pointer flex items-center justify-center w-7 h-7 min-w-7 transition-colors duration-200"
+                    style="background-color: var(--color-primary, #007bff);"
                     on:click=create_cube_action
                 >
                     <Icon icon=LuPlus width="16" height="16" />
@@ -162,73 +154,24 @@ fn GlacierPanel(cubes: RwSignal<Vec<Cube>>) -> impl IntoView {
 
 #[component]
 fn Workspace() -> impl IntoView {
-    let workspace_styles = style! {
-        .workspace {
-            display: flex;
-            flex-direction: column;
-            height: 100%;
-            border-right: 1px solid var(--color-border);
-            background-color: var(--color-workspace-bg);
-            overflow: hidden;
-        }
-    };
-
-    let workspace_header_styles = style! {
-        .workspace-header {
-            padding: 1rem;
-            border-bottom: 1px solid var(--color-border);
-            background-color: var(--color-panel-header-bg);
-        }
-        .workspace-header h2 {
-            margin: 0;
-            font-size: 1rem;
-            font-weight: 600;
-            color: var(--color-text);
-        }
-    };
-
-    let workspace_content_styles = style! {
-        .workspace-content {
-            flex: 1;
-            overflow-y: auto;
-            padding: 0.5rem;
-        }
-    };
-
-    let workspace_editor_styles = style! {
-        .workspace-editor {
-            padding: 2rem;
-            min-height: 100%;
-        }
-    };
-
-    let placeholder_text_styles = style! {
-        .placeholder-text {
-            color: var(--color-text-muted);
-            font-style: italic;
-            text-align: center;
-            margin-top: 3rem;
-        }
-    };
-
-    styled::view! { workspace_styles,
-        <div class="workspace">
-            {styled::view! { workspace_header_styles,
-                <div class="workspace-header">
-                    <h2>"Workspace"</h2>
+    view! {
+        <div
+            class="flex flex-col h-full border-r overflow-hidden"
+            style="border-color: var(--color-border); background-color: var(--color-workspace-bg);"
+        >
+            <div
+                class="p-4 border-b"
+                style="border-color: var(--color-border); background-color: var(--color-panel-header-bg);"
+            >
+                <h2 class="m-0 text-base font-semibold" style="color: var(--color-text);">"Workspace"</h2>
+            </div>
+            <div class="flex-1 overflow-y-auto p-2">
+                <div class="p-8 min-h-full">
+                    <p class="italic text-center mt-12" style="color: var(--color-text-muted);">
+                        "Select a cube from Glacier or drag raw material from Stream to start editing..."
+                    </p>
                 </div>
-            }}
-            {styled::view! { workspace_content_styles,
-                <div class="workspace-content">
-                    {styled::view! { workspace_editor_styles,
-                        <div class="workspace-editor">
-                            {styled::view! { placeholder_text_styles,
-                                <p class="placeholder-text">"Select a cube from Glacier or drag raw material from Stream to start editing..."</p>
-                            }}
-                        </div>
-                    }}
                 </div>
-            }}
         </div>
     }
 }
@@ -258,36 +201,6 @@ fn StreamPanel(
 
 #[component]
 fn CubeEntry(cube: Cube) -> impl IntoView {
-    let entry_item_styles = style! {
-        .entry-item {
-            padding: 0.75rem;
-            border: 1px solid var(--color-border);
-            border-radius: 4px;
-            background-color: var(--color-panel-bg);
-            cursor: pointer;
-            transition: background-color 0.2s;
-        }
-        .entry-item:hover {
-            background-color: var(--color-hover);
-        }
-    };
-
-    let entry_title_styles = style! {
-        .entry-title {
-            font-weight: 500;
-            color: var(--color-text);
-            margin-bottom: 0.25rem;
-        }
-    };
-
-    let entry_meta_styles = style! {
-        .entry-meta {
-            font-size: 0.75rem;
-            color: var(--color-text-secondary);
-            margin-top: 0.25rem;
-        }
-    };
-
     let (title, created_at) = match &cube.content {
         | CubeContent::Document(doc) => (doc.inner.title.clone(), doc.created_at),
         | CubeContent::PreOrder(po) => (format!("PreOrder"), po.created_at),
@@ -312,86 +225,38 @@ fn CubeEntry(cube: Cube) -> impl IntoView {
         | CubeContent::RawReference(_) => (format!("Raw Reference"), chrono::Utc::now()),
     };
     let created = created_at.format("%Y-%m-%d %H:%M").to_string();
-    styled::view! { entry_item_styles,
-        <div class="entry-item">
-            {styled::view! { entry_title_styles,
-                <div class="entry-title">{title}</div>
-            }}
-            {styled::view! { entry_meta_styles,
-                <div class="entry-meta">{created}</div>
-            }}
+    view! {
+        <div
+            class="p-3 border rounded cursor-pointer transition-colors duration-200 hover:bg-(--color-hover)"
+            style="border-color: var(--color-border); background-color: var(--color-panel-bg);"
+        >
+            <div class="font-medium mb-1" style="color: var(--color-text);">{title}</div>
+            <div class="text-xs mt-1" style="color: var(--color-text-secondary);">{created}</div>
         </div>
     }
 }
 
 #[component]
 fn RawEntry(raw: Raw) -> impl IntoView {
-    let entry_item_styles = style! {
-        .entry-item {
-            padding: 0.75rem;
-            border: 1px solid var(--color-border);
-            border-radius: 4px;
-            background-color: var(--color-panel-bg);
-            cursor: pointer;
-            transition: background-color 0.2s;
-            width: 100%;
-            max-width: 100%;
-            box-sizing: border-box;
-            word-wrap: break-word;
-            overflow-wrap: break-word;
-        }
-        .entry-item:hover {
-            background-color: var(--color-hover);
-        }
-    };
-
     let source = format_raw_source(&raw.inner.source);
     let created = raw.created_at.format("%Y-%m-%d %H:%M").to_string();
     let content = raw.inner.content.clone();
-    styled::view! { entry_item_styles,
-        <div class="entry-item raw-entry">
+    view! {
+        <div
+            class="p-3 border rounded cursor-pointer transition-colors duration-200 w-full max-w-full box-border wrap-break-word hover:bg-(--color-hover)"
+            style="border-color: var(--color-border); background-color: var(--color-panel-bg);"
+        >
             <RawPreview content=content />
-            {
-                let source_styles = style! {
-                    .entry-meta {
-                        font-size: 0.75rem;
-                        color: var(--color-text-secondary);
-                        margin-top: 0.25rem;
-                    }
-                };
-                styled::view! { source_styles,
-                    <div class="entry-meta">{source}</div>
-                }
-            }
-            {
-                let created_styles = style! {
-                    .entry-meta {
-                        font-size: 0.75rem;
-                        color: var(--color-text-secondary);
-                        margin-top: 0.25rem;
-                    }
-                };
-                styled::view! { created_styles,
-                    <div class="entry-meta">{created}</div>
-                }
-            }
+            <div class="text-xs mt-1" style="color: var(--color-text-secondary);">{source}</div>
+            <div class="text-xs mt-1" style="color: var(--color-text-secondary);">{created}</div>
         </div>
     }
 }
 
 #[component]
 fn RawPreview(content: RawContent) -> impl IntoView {
-    let raw_preview_styles = style! {
-        .raw-preview {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            margin-bottom: 0.5rem;
-        }
-    };
-
-    styled::view! { raw_preview_styles,
-        <div class="raw-preview">
+    view! {
+        <div class="flex items-center gap-2 mb-2">
             {match &content {
                 RawContent::Text(text) => {
                     let preview_text = if text.content.len() > 50 {
@@ -399,27 +264,10 @@ fn RawPreview(content: RawContent) -> impl IntoView {
                     } else {
                         text.content.clone()
                     };
-                    let raw_icon_styles2 = style! {
-                        .raw-icon {
-                            font-size: 1.25rem;
-                        }
-                    };
-                    let raw_content_styles2 = style! {
-                        .raw-content {
-                            flex: 1;
-                            font-size: 0.875rem;
-                            color: var(--color-text-secondary);
-                            word-break: break-word;
-                        }
-                    };
                     view! {
                         <>
-                            {styled::view! { raw_icon_styles2,
-                                <div class="raw-icon">"📄"</div>
-                            }}
-                            {styled::view! { raw_content_styles2,
-                                <div class="raw-content">{preview_text}</div>
-                            }}
+                            <div class="text-xl">"📄"</div>
+                            <div class="flex-1 text-sm wrap-break-word" style="color: var(--color-text-secondary);">{preview_text}</div>
                         </>
                     }.into_any()
                 }
@@ -476,58 +324,18 @@ fn RawPreview(content: RawContent) -> impl IntoView {
                         );
                     }
 
-                    let raw_icon_styles3 = style! {
-                        .raw-icon {
-                            font-size: 1.25rem;
-                            width: 1.25rem;
-                            height: 1.25rem;
-                            display: flex;
-                            align-items: center;
-                            justify-content: center;
-                            flex-shrink: 0;
-                        }
-                        .raw-thumbnail {
-                            width: 1.25rem;
-                            height: 1.25rem;
-                            object-fit: cover;
-                            border-radius: 2px;
-                            flex-shrink: 0;
-                        }
-                        .raw-thumbnail.hidden {
-                            display: none;
-                        }
-                        .raw-fallback {
-                            font-size: 1.25rem;
-                        }
-                        .raw-fallback.hidden {
-                            display: none;
-                        }
-                    };
-                    let raw_content_styles3 = style! {
-                        .raw-content {
-                            flex: 1;
-                            font-size: 0.875rem;
-                            color: var(--color-text-secondary);
-                            word-break: break-word;
-                        }
-                    };
-
                     view! {
                         <>
-                            {styled::view! { raw_icon_styles3,
-                                <div class="raw-icon">
+                            <div class="text-xl w-5 h-5 flex items-center justify-center shrink-0">
                                     {move || {
                                         if let Some(url) = thumbnail_url.get() {
-                                            view! { <img class="raw-thumbnail" src=url alt="Thumbnail" /> }.into_any()
+                                        view! { <img class="w-5 h-5 object-cover rounded shrink-0" src=url alt="Thumbnail" /> }.into_any()
                                         } else {
                                             view! { <span>"🖼️"</span> }.into_any()
                                         }
                                     }}
                                 </div>
-                            }}
-                            {styled::view! { raw_content_styles3,
-                                <div class="raw-content">{format!("Image ({}x{})", img.width, img.height)}</div>
-                            }}
+                            <div class="flex-1 text-sm wrap-break-word" style="color: var(--color-text-secondary);">{format!("Image ({}x{})", img.width, img.height)}</div>
                         </>
                     }.into_any()
                 }
