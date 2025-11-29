@@ -17,15 +17,14 @@ fn WatchPathItem(
     let path = config.path.clone();
     let enabled_signal = RwSignal::new(config.enabled);
     let path_for_toggle = path.clone();
-    let path_for_remove = path.clone();
-    let path_for_import = path.clone();
+    let path_for_action = path.clone();
 
     view! {
         <li 
             class="flex items-center justify-between p-2.5 mb-2 rounded border bg-[var(--color-bg-secondary)] border-[var(--color-border)]"
         >
             <div class="flex items-center gap-2 flex-1 mr-2.5">
-                <label class="relative inline-block w-11 h-6">
+                <label class="relative inline-block w-9 h-5">
                     <input
                         type="checkbox"
                         class="opacity-0 w-0 h-0"
@@ -41,10 +40,10 @@ fn WatchPathItem(
                         style=move || if enabled_signal.get() { "background-color: var(--color-primary);" } else { "background-color: var(--color-toggle-bg);" }
                     >
                         <span 
-                            class="absolute h-[18px] w-[18px] left-[3px] bottom-[3px] rounded-full transition-all duration-300"
+                            class="absolute h-[14px] w-[14px] left-[2px] bottom-[2px] rounded-full transition-all duration-300"
                             style=move || {
                                 let thumb_color = "background-color: var(--color-toggle-thumb);";
-                                let transform = if enabled_signal.get() { "transform: translateX(20px);" } else { "transform: translateX(0);" };
+                                let transform = if enabled_signal.get() { "transform: translateX(16px);" } else { "transform: translateX(0);" };
                                 format!("{} {}", thumb_color, transform)
                             }
                         ></span>
@@ -53,24 +52,26 @@ fn WatchPathItem(
                 <span class="flex-1 break-all text-xs font-mono text-[var(--color-text-secondary,#6c757d)]">{path}</span>
             </div>
             <div class="flex gap-2">
-                <button::InterfaceButton
-                    icon=view! { <Icon icon=LuDownload width="16" height="16" /> }
-                    color_variant="primary"
-                    on_click=move |_| on_import(path_for_import.clone())
-                />
                 {move || {
-                    if !enabled_signal.get() {
-                        let path_for_remove = path_for_remove.clone();
-                        let on_remove_clone = on_remove.clone();
+                    let path_for_action = path_for_action.clone();
+                    if enabled_signal.get() {
+                        let on_import = on_import.clone();
                         view! {
-                            <button::InterfaceButton
-                                icon=view! { <Icon icon=LuTrash2 width="16" height="16" /> }
-                                color_variant="danger"
-                                on_click=move |_| on_remove_clone(path_for_remove.clone())
+                            <button::ActionButton
+                                icon=view! { <Icon icon=LuDownload width="12" height="12" /> }
+                                color_variant="primary"
+                                on_click=move |_| on_import(path_for_action.clone())
                             />
                         }.into_any()
                     } else {
-                        view! {}.into_any()
+                        let on_remove = on_remove.clone();
+                        view! {
+                            <button::ActionButton
+                                icon=view! { <Icon icon=LuTrash2 width="12" height="12" /> }
+                                color_variant="danger"
+                                on_click=move |_| on_remove(path_for_action.clone())
+                            />
+                        }.into_any()
                     }
                 }}
             </div>
@@ -118,8 +119,15 @@ fn AddPathInput(
     new_path: RwSignal<String>,
     on_add: impl Fn() + Clone + 'static,
 ) -> impl IntoView {
+    let on_add_clone = on_add.clone();
     view! {
         <div class="flex gap-2 mt-2.5">
+            <button::InterfaceButton
+                icon=view! { <Icon icon=LuPlus width="16" height="16" /> }
+                color_variant="primary"
+                on_click=move |_| on_add_clone()
+                class="pl-2"
+            />
             <input
                 type="text"
                 class="flex-1 w-full px-3 py-2 border rounded text-sm outline-none border-[var(--color-border,#ccc)] bg-[var(--color-bg)] text-[var(--color-text)]"
@@ -133,20 +141,14 @@ fn AddPathInput(
                     }
                 }
                 on:keypress={
-                    let on_add_clone = on_add.clone();
                     move |ev| {
+                        // If Enter key is pressed, add the path
                         if ev.key_code() == 13 {
-                            on_add_clone();
+                            on_add();
                         }
                     }
                 }
             />
-            <button 
-                class="p-2 border-none rounded cursor-pointer text-sm font-medium transition-colors duration-200 flex items-center justify-center gap-1.5 text-white w-8 h-8 min-w-8 hover-bg-primary bg-[var(--color-primary,#007bff)]"
-                on:click=move |_| on_add()
-            >
-                <Icon icon=LuPlus width="16" height="16" />
-            </button>
         </div>
     }
 }
@@ -154,12 +156,13 @@ fn AddPathInput(
 #[component]
 fn CloseButton(close_settings: impl Fn() + 'static) -> impl IntoView {
     view! {
-        <button 
-            class="fixed top-5 left-5 p-2 text-white border-none rounded cursor-pointer text-sm font-medium transition-colors duration-200 z-[1001] flex items-center justify-center hover-bg-secondary bg-[var(--color-secondary,#6c757d)]"
-            on:click=move |_| close_settings()
-        >
-            <Icon icon=LuX width="20" height="20" />
-        </button>
+        <div class="fixed top-5 left-5 z-[1001]">
+            <button::InterfaceButton
+                icon=view! { <Icon icon=LuX width="20" height="20" /> }
+                color_variant="secondary"
+                on_click=move |_| close_settings()
+            />
+        </div>
     }
 }
 
