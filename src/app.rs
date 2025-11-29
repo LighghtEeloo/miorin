@@ -213,7 +213,6 @@ fn MainView(
 fn GlacierPanel(
     cubes: RwSignal<Vec<Cube>>, on_resize_right: std::rc::Rc<dyn Fn(f64) + 'static>,
 ) -> impl IntoView {
-    let cubes = cubes.clone();
     let create_cube_action = move |_| {
         let cubes_signal = cubes.clone();
         spawn_local(async move {

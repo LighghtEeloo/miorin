@@ -112,7 +112,7 @@ pub async fn get_all_raw_entries(app: AppHandle) -> Result<Vec<Raw>, String> {
 
     tracing::debug!("Executing query to get all raw entries");
     let rows = sqlx::query(
-        "SELECT id, created_at, updated_at, vibe_json, source_json, content_json FROM raw_entries ORDER BY created_at DESC"
+        "SELECT id, tags_json, created_at, updated_at, vibe_json, source_json, content_json FROM raw_entries ORDER BY created_at DESC"
     )
     .fetch_all(&pool)
     .await
@@ -126,6 +126,10 @@ pub async fn get_all_raw_entries(app: AppHandle) -> Result<Vec<Raw>, String> {
     for row in rows {
         let id_str: String = row.get("id");
         let id = RawId(uuid::Uuid::parse_str(&id_str).map_err(|e| format!("Invalid UUID: {}", e))?);
+
+        let tags_json: String = row.get("tags_json");
+        let tags: Vec<String> = serde_json::from_str(&tags_json)
+            .map_err(|e| format!("Failed to parse tags: {}", e))?;
 
         let created_at_str: String = row.get("created_at");
         let created_at: DateTime<Utc> = serde_json::from_str(&created_at_str)
@@ -159,7 +163,7 @@ pub async fn get_all_raw_entries(app: AppHandle) -> Result<Vec<Raw>, String> {
 
         entries.push(Raw {
             id,
-            tags: vec![],
+            tags,
             created_at,
             updated_at,
             vibe,
@@ -185,7 +189,7 @@ pub(crate) async fn find_duplicate_raw_entry(
 
     // Get all raw entries and check for matching source paths and created dates
     let rows = sqlx::query(
-        "SELECT id, created_at, updated_at, vibe_json, source_json, content_json FROM raw_entries",
+        "SELECT id, tags_json, created_at, updated_at, vibe_json, source_json, content_json FROM raw_entries",
     )
     .fetch_all(pool)
     .await
@@ -221,6 +225,10 @@ pub(crate) async fn find_duplicate_raw_entry(
                     uuid::Uuid::parse_str(&id_str).map_err(|e| format!("Invalid UUID: {}", e))?,
                 );
 
+                let tags_json: String = row.get("tags_json");
+                let tags: Vec<String> = serde_json::from_str(&tags_json)
+                    .map_err(|e| format!("Failed to parse tags: {}", e))?;
+
                 let created_at: DateTime<Utc> = serde_json::from_str(&row_created_at_str)
                     .map_err(|e| format!("Failed to parse created_at: {}", e))?;
 
@@ -249,7 +257,7 @@ pub(crate) async fn find_duplicate_raw_entry(
 
                 return Ok(Some(Raw {
                     id,
-                    tags: vec![],
+                    tags,
                     created_at,
                     updated_at,
                     vibe,
@@ -303,6 +311,8 @@ pub async fn create_raw_entry(
     let raw = Raw { id, tags: vec![], created_at, updated_at, vibe: None, inner };
 
     let id_str = id.0.to_string();
+    let tags_json = serde_json::to_string(&raw.tags)
+        .map_err(|e| format!("Failed to serialize tags: {}", e))?;
     let created_at_str = serde_json::to_string(&raw.created_at)
         .map_err(|e| format!("Failed to serialize created_at: {}", e))?;
     let updated_at_str = serde_json::to_string(&raw.updated_at)
@@ -314,9 +324,10 @@ pub async fn create_raw_entry(
 
     tracing::debug!("Executing INSERT query");
     sqlx::query(
-        "INSERT INTO raw_entries (id, created_at, updated_at, vibe_json, source_json, content_json) VALUES (?, ?, ?, ?, ?, ?)"
+        "INSERT INTO raw_entries (id, tags_json, created_at, updated_at, vibe_json, source_json, content_json) VALUES (?, ?, ?, ?, ?, ?, ?)"
     )
     .bind(&id_str)
+    .bind(&tags_json)
     .bind(&created_at_str)
     .bind(&updated_at_str)
     .bind("null")
@@ -343,13 +354,17 @@ pub async fn update_raw_entry(
 
     // Get existing entry
     let row = sqlx::query(
-        "SELECT id, created_at, updated_at, vibe_json, source_json, content_json FROM raw_entries WHERE id = ?"
+        "SELECT id, tags_json, created_at, updated_at, vibe_json, source_json, content_json FROM raw_entries WHERE id = ?"
     )
     .bind(&id)
     .fetch_optional(&pool)
     .await
     .map_err(|e| format!("Query error: {}", e))?
     .ok_or("Raw entry not found")?;
+
+    let tags_json: String = row.get("tags_json");
+    let tags: Vec<String> = serde_json::from_str(&tags_json)
+        .map_err(|e| format!("Failed to parse tags: {}", e))?;
 
     let created_at_str: String = row.get("created_at");
     let created_at: DateTime<Utc> = serde_json::from_str(&created_at_str)
@@ -391,13 +406,15 @@ pub async fn update_raw_entry(
 
     let raw = Raw {
         id: raw_id,
-        tags: vec![],
+        tags,
         created_at,
         updated_at,
         vibe: new_vibe,
         inner: RawInner { source, content },
     };
 
+    let tags_json = serde_json::to_string(&raw.tags)
+        .map_err(|e| format!("Failed to serialize tags: {}", e))?;
     let updated_at_str = serde_json::to_string(&raw.updated_at)
         .map_err(|e| format!("Failed to serialize updated_at: {}", e))?;
     let vibe_json = if let Some(ref v) = raw.vibe {
@@ -411,8 +428,9 @@ pub async fn update_raw_entry(
         .map_err(|e| format!("Failed to serialize content: {}", e))?;
 
     sqlx::query(
-        "UPDATE raw_entries SET updated_at = ?, vibe_json = ?, source_json = ?, content_json = ? WHERE id = ?"
+        "UPDATE raw_entries SET tags_json = ?, updated_at = ?, vibe_json = ?, source_json = ?, content_json = ? WHERE id = ?"
     )
+    .bind(&tags_json)
     .bind(&updated_at_str)
     .bind(&vibe_json)
     .bind(&source_json)
@@ -459,7 +477,7 @@ pub async fn get_all_cubes(app: AppHandle) -> Result<Vec<Cube>, String> {
     let pool = get_db_pool(&app).await?;
 
     let rows = sqlx::query(
-        "SELECT id, pin, content_json, created_at, updated_at, vibe_json FROM cubes ORDER BY created_at DESC"
+        "SELECT id, tags_json, pin, content_json, created_at, updated_at, vibe_json FROM cubes ORDER BY created_at DESC"
     )
     .fetch_all(&pool)
     .await
@@ -470,6 +488,10 @@ pub async fn get_all_cubes(app: AppHandle) -> Result<Vec<Cube>, String> {
         let id_str: String = row.get("id");
         let id =
             CubeId(uuid::Uuid::parse_str(&id_str).map_err(|e| format!("Invalid UUID: {}", e))?);
+
+        let tags_json: String = row.get("tags_json");
+        let tags: Vec<String> = serde_json::from_str(&tags_json)
+            .map_err(|e| format!("Failed to parse tags: {}", e))?;
 
         let created_at_str: String = row.get("created_at");
         let created_at: DateTime<Utc> = serde_json::from_str(&created_at_str)
@@ -502,7 +524,7 @@ pub async fn get_all_cubes(app: AppHandle) -> Result<Vec<Cube>, String> {
 
         cubes.push(Cube {
             id,
-            tags: vec![],
+            tags,
             created_at,
             updated_at,
             vibe,
@@ -531,6 +553,8 @@ pub async fn create_cube(app: AppHandle, pin: bool, content: CubeContent) -> Res
     };
 
     let id_str = id.0.to_string();
+    let tags_json = serde_json::to_string(&cube.tags)
+        .map_err(|e| format!("Failed to serialize tags: {}", e))?;
     let created_at_str = serde_json::to_string(&cube.created_at)
         .map_err(|e| format!("Failed to serialize created_at: {}", e))?;
     let updated_at_str = serde_json::to_string(&cube.updated_at)
@@ -545,9 +569,10 @@ pub async fn create_cube(app: AppHandle, pin: bool, content: CubeContent) -> Res
     tracing::debug!("Creating cube with pin={}, content_json length={}", pin_int, content_json.len());
 
     sqlx::query(
-        "INSERT INTO cubes (id, pin, content_json, created_at, updated_at, vibe_json) VALUES (?, ?, ?, ?, ?, ?)"
+        "INSERT INTO cubes (id, tags_json, pin, content_json, created_at, updated_at, vibe_json) VALUES (?, ?, ?, ?, ?, ?, ?)"
     )
     .bind(&id_str)
+    .bind(&tags_json)
     .bind(pin_int)
     .bind(&content_json)
     .bind(&created_at_str)
@@ -575,13 +600,17 @@ pub async fn update_cube(
 
     // Get existing cube
     let row = sqlx::query(
-        "SELECT id, pin, content_json, created_at, updated_at, vibe_json FROM cubes WHERE id = ?",
+        "SELECT id, tags_json, pin, content_json, created_at, updated_at, vibe_json FROM cubes WHERE id = ?",
     )
     .bind(&id)
     .fetch_optional(&pool)
     .await
     .map_err(|e| format!("Query error: {}", e))?
     .ok_or("Cube not found")?;
+
+    let tags_json: String = row.get("tags_json");
+    let tags: Vec<String> = serde_json::from_str(&tags_json)
+        .map_err(|e| format!("Failed to parse tags: {}", e))?;
 
     let created_at_str: String = row.get("created_at");
     let created_at: DateTime<Utc> = serde_json::from_str(&created_at_str)
@@ -615,20 +644,23 @@ pub async fn update_cube(
 
     let cube = Cube {
         id: cube_id,
-        tags: vec![],
+        tags,
         created_at,
         updated_at,
         vibe,
         inner: CubeInner { pin: new_pin, content: new_content },
     };
 
+    let tags_json = serde_json::to_string(&cube.tags)
+        .map_err(|e| format!("Failed to serialize tags: {}", e))?;
     let updated_at_str = serde_json::to_string(&cube.updated_at)
         .map_err(|e| format!("Failed to serialize updated_at: {}", e))?;
     let pin_int = if cube.inner.pin { 1 } else { 0 };
     let content_json = serde_json::to_string(&cube.inner.content)
         .map_err(|e| format!("Failed to serialize content: {}", e))?;
 
-    sqlx::query("UPDATE cubes SET pin = ?, content_json = ?, updated_at = ? WHERE id = ?")
+    sqlx::query("UPDATE cubes SET tags_json = ?, pin = ?, content_json = ?, updated_at = ? WHERE id = ?")
+        .bind(&tags_json)
         .bind(pin_int)
         .bind(&content_json)
         .bind(&updated_at_str)

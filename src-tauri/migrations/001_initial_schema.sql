@@ -1,6 +1,7 @@
 -- Raw entries table
 CREATE TABLE IF NOT EXISTS raw_entries (
     id TEXT PRIMARY KEY,
+    tags_json TEXT NOT NULL, -- JSON serialized Vec<String>
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL,
     vibe_json TEXT, -- JSON serialized Vibe, nullable
@@ -11,6 +12,7 @@ CREATE TABLE IF NOT EXISTS raw_entries (
 -- Cubes table
 CREATE TABLE IF NOT EXISTS cubes (
     id TEXT PRIMARY KEY,
+    tags_json TEXT NOT NULL, -- JSON serialized Vec<String>
     pin INTEGER NOT NULL DEFAULT 0, -- 0 or 1 for boolean
     content_json TEXT NOT NULL, -- JSON serialized CubeContent
     created_at TEXT NOT NULL,
@@ -21,6 +23,7 @@ CREATE TABLE IF NOT EXISTS cubes (
 -- Links table (for links between cubes)
 CREATE TABLE IF NOT EXISTS links (
     id TEXT PRIMARY KEY,
+    tags_json TEXT NOT NULL, -- JSON serialized Vec<String>
     from_cube_id TEXT NOT NULL,
     to_cube_id TEXT NOT NULL,
     kind_json TEXT NOT NULL, -- JSON serialized LinkKind
