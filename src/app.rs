@@ -230,11 +230,20 @@ fn GlacierPanel(
                 }),
             };
 
+            web_sys::console::log_1(&"Creating cube...".into());
             match tauri_api::create_cube(true, CubeContent::Point(dummy_point)).await {
-                | Ok(_) => {
+                | Ok(cube) => {
+                    web_sys::console::log_1(
+                        &format!("Cube created successfully with id: {}", cube.id.0).into(),
+                    );
                     // Reload cubes
                     match tauri_api::get_all_cubes().await {
-                        | Ok(cubes_data) => cubes_signal.set(cubes_data),
+                        | Ok(cubes_data) => {
+                            web_sys::console::log_1(
+                                &format!("Reloaded {} cubes", cubes_data.len()).into(),
+                            );
+                            cubes_signal.set(cubes_data);
+                        }
                         | Err(e) => {
                             web_sys::console::error_1(
                                 &format!("Failed to reload cubes: {}", e).into(),
@@ -264,8 +273,26 @@ fn GlacierPanel(
         >
             <card::CardList items=move || {
                 let cubes_data = cubes.get();
-                cubes_data.into_iter()
-                    .filter(|cube| cube.inner.pin)
+                web_sys::console::log_1(
+                    &format!("GlacierPanel: Got {} total cubes", cubes_data.len()).into(),
+                );
+                let pinned: Vec<_> = cubes_data
+                    .into_iter()
+                    .filter(|cube| {
+                        let is_pinned = cube.inner.pin;
+                        if !is_pinned {
+                            web_sys::console::log_1(
+                                &format!("Filtering out cube with pin=false, id={}", cube.id.0).into(),
+                            );
+                        }
+                        is_pinned
+                    })
+                    .collect();
+                web_sys::console::log_1(
+                    &format!("GlacierPanel: {} pinned cubes after filter", pinned.len()).into(),
+                );
+                pinned
+                    .into_iter()
                     .map(|cube| view! { <CubeEntry cube=cube /> }.into_any())
                     .collect::<Vec<_>>()
             } />

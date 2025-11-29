@@ -537,7 +537,12 @@ pub async fn create_cube(app: AppHandle, pin: bool, content: CubeContent) -> Res
         .map_err(|e| format!("Failed to serialize updated_at: {}", e))?;
     let pin_int = if cube.inner.pin { 1 } else { 0 };
     let content_json = serde_json::to_string(&cube.inner.content)
-        .map_err(|e| format!("Failed to serialize content: {}", e))?;
+        .map_err(|e| {
+            tracing::error!("Failed to serialize content: {}", e);
+            format!("Failed to serialize content: {}", e)
+        })?;
+
+    tracing::debug!("Creating cube with pin={}, content_json length={}", pin_int, content_json.len());
 
     sqlx::query(
         "INSERT INTO cubes (id, pin, content_json, created_at, updated_at, vibe_json) VALUES (?, ?, ?, ?, ?, ?)"
@@ -550,8 +555,12 @@ pub async fn create_cube(app: AppHandle, pin: bool, content: CubeContent) -> Res
     .bind("null")
     .execute(&pool)
     .await
-    .map_err(|e| format!("Failed to insert cube: {}", e))?;
+    .map_err(|e| {
+        tracing::error!("Failed to insert cube: {}", e);
+        format!("Failed to insert cube: {}", e)
+    })?;
 
+    tracing::info!("Successfully created cube with id={}", id_str);
     Ok(cube)
 }
 
