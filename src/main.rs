@@ -5,6 +5,7 @@ mod panel;
 mod card;
 mod button;
 mod color;
+mod toggle;
 
 use app::*;
 use leptos::prelude::*;

@@ -1,6 +1,7 @@
 use crate::tauri_api;
 use crate::button;
 use crate::color::ColorVariant;
+use crate::toggle;
 use leptos::prelude::*;
 use leptos_icons::Icon;
 use icondata::{LuDownload, LuEye, LuEyeOff, LuFolderOpen, LuPlus, LuRefreshCw, LuTrash2, LuX};
@@ -25,31 +26,12 @@ fn WatchPathItem(
             class="flex items-center justify-between p-2.5 mb-2 rounded border bg-[var(--color-bg-secondary)] border-[var(--color-border)]"
         >
             <div class="flex items-center gap-2 flex-1 mr-2.5">
-                <label class="relative inline-block w-9 h-5">
-                    <input
-                        type="checkbox"
-                        class="opacity-0 w-0 h-0"
-                        checked=enabled_signal
-                        on:change=move |_| {
-                            let new_value = !enabled_signal.get();
-                            enabled_signal.set(new_value);
-                            on_toggle(path_for_toggle.clone(), new_value);
-                        }
-                    />
-                    <span 
-                        class="absolute cursor-pointer top-0 left-0 right-0 bottom-0 rounded-full transition-all duration-300"
-                        style=move || if enabled_signal.get() { "background-color: var(--color-primary);" } else { "background-color: var(--color-toggle-bg);" }
-                    >
-                        <span 
-                            class="absolute h-[14px] w-[14px] left-[2px] bottom-[2px] rounded-full transition-all duration-300"
-                            style=move || {
-                                let thumb_color = "background-color: var(--color-toggle-thumb);";
-                                let transform = if enabled_signal.get() { "transform: translateX(16px);" } else { "transform: translateX(0);" };
-                                format!("{} {}", thumb_color, transform)
-                            }
-                        ></span>
-                    </span>
-                </label>
+                <toggle::Toggle
+                    enabled=enabled_signal
+                    on_change=move |new_value| {
+                        on_toggle(path_for_toggle.clone(), new_value);
+                    }
+                />
                 <span class="flex-1 break-all text-xs font-mono text-[var(--color-text-secondary,#6c757d)]">{path}</span>
             </div>
             <div class="flex gap-2">
