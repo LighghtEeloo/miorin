@@ -112,7 +112,7 @@ pub async fn get_all_cubes() -> Result<Vec<Cube>, String> {
 pub async fn create_raw_entry(inner: RawInner) -> Result<Raw, String> {
     web_sys::console::log_1(&"tauri_api::create_raw_entry: Starting invoke...".into());
     let result: Result<Raw, String> =
-        invoke_tauri("create_raw_entry", serde_json::json!({ "inner": inner })).await;
+        invoke_tauri("create_raw_entry", serde_json::json!({ "inner": inner, "createdAt": None::<String>, "updatedAt": None::<String> })).await;
     match &result {
         | Ok(raw) => {
             web_sys::console::log_1(

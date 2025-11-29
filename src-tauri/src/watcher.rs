@@ -164,14 +164,28 @@ async fn handle_file_event(app: &AppHandle, file_path: &Path) -> Result<(), Stri
         RawContent::Text(TextRaw { content: file_content, mime_type, language })
     };
 
+    // Get file metadata for timestamps
+    let file_metadata = std::fs::metadata(file_path)
+        .map_err(|e| format!("Failed to get file metadata: {}", e))?;
+    
+    // Use file modification time, or creation time if modification time is not available
+    let file_time = file_metadata
+        .modified()
+        .or_else(|_| file_metadata.created())
+        .map_err(|e| format!("Failed to get file time: {}", e))?;
+    
+    let file_datetime = chrono::DateTime::<chrono::Utc>::from(file_time);
+    let created_at_str = serde_json::to_string(&file_datetime)
+        .map_err(|e| format!("Failed to serialize file timestamp: {}", e))?;
+
     // Create Raw entry
     let inner = RawInner {
         source: RawSource::FileWatcher { original_path: file_path.to_path_buf() },
         content,
     };
 
-    // Save to database
-    create_raw_entry(app.clone(), inner).await?;
+    // Save to database with file timestamps
+    create_raw_entry(app.clone(), inner, Some(created_at_str.clone()), Some(created_at_str)).await?;
 
     tracing::info!(file_path = ?file_path, "Created raw entry from file");
     Ok(())

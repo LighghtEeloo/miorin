@@ -166,7 +166,12 @@ pub async fn get_all_raw_entries(app: AppHandle) -> Result<Vec<Raw>, String> {
 
 /// Create a new raw entry
 #[tauri::command]
-pub async fn create_raw_entry(app: AppHandle, inner: RawInner) -> Result<Raw, String> {
+pub async fn create_raw_entry(
+    app: AppHandle,
+    inner: RawInner,
+    created_at: Option<String>,
+    updated_at: Option<String>,
+) -> Result<Raw, String> {
     tracing::debug!("Creating new raw entry");
     let pool = get_db_pool(&app).await.map_err(|e| {
         tracing::error!("Database error: {}", e);
@@ -175,9 +180,23 @@ pub async fn create_raw_entry(app: AppHandle, inner: RawInner) -> Result<Raw, St
     tracing::debug!("Got database pool");
 
     let id = RawId(uuid::Uuid::now_v7());
-    let now = Utc::now();
+    
+    // Use provided timestamps or fall back to current time
+    let created_at = if let Some(created_at_str) = created_at {
+        serde_json::from_str(&created_at_str)
+            .map_err(|e| format!("Failed to parse created_at: {}", e))?
+    } else {
+        Utc::now()
+    };
+    
+    let updated_at = if let Some(updated_at_str) = updated_at {
+        serde_json::from_str(&updated_at_str)
+            .map_err(|e| format!("Failed to parse updated_at: {}", e))?
+    } else {
+        created_at // Use created_at as default for updated_at
+    };
 
-    let raw = Raw { id, created_at: now, updated_at: now, vibe: None, inner };
+    let raw = Raw { id, created_at, updated_at, vibe: None, inner };
 
     let id_str = id.0.to_string();
     let created_at_str = serde_json::to_string(&raw.created_at)
