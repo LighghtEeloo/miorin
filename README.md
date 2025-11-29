@@ -14,11 +14,3 @@ This project is built on Tauri. To get started, make sure you have the Tauri CLI
 ```
 cargo install tauri-cli
 ```
-
-To install the development dependencies (including TailwindCSS), run:
-
-```
-npm i
-```
-
-This will install all required packages as specified in `package.json` and lock them in `package-lock.json`.
