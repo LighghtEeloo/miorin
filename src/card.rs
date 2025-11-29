@@ -8,7 +8,7 @@ pub fn CardList<F>(
 where
     F: Fn() -> Vec<AnyView> + 'static + Send,
 {
-    let base_classes = "flex flex-col gap-2 flex-[1_1_auto] w-full max-w-full min-w-0 min-h-0 max-h-full box-border overflow-auto";
+    let base_classes = "flex flex-col gap-2 flex-[1_1_auto] w-full max-w-full min-w-0 min-h-0 max-h-full box-border";
     let div_classes = if let Some(custom_class) = class {
         format!("{} {}", base_classes, custom_class)
     } else {
