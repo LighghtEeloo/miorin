@@ -21,7 +21,7 @@ fn WatchPathItem(
 
     view! {
         <li 
-            class="flex items-center justify-between p-2.5 mb-2 rounded border bg-[var(--color-bg-secondary,#f8f9fa)] border-[var(--color-border,#dee2e6)]"
+            class="flex items-center justify-between p-2.5 mb-2 rounded border bg-[var(--color-bg-secondary)] border-[var(--color-border)]"
         >
             <div class="flex items-center gap-2 flex-1 mr-2.5">
                 <label class="relative inline-block w-11 h-6">
@@ -37,11 +37,15 @@ fn WatchPathItem(
                     />
                     <span 
                         class="absolute cursor-pointer top-0 left-0 right-0 bottom-0 rounded-full transition-all duration-300"
-                        style=move || if enabled_signal.get() { "background-color: var(--color-primary, #007bff);" } else { "background-color: var(--color-toggle-bg, #ccc);" }
+                        style=move || if enabled_signal.get() { "background-color: var(--color-primary);" } else { "background-color: var(--color-toggle-bg);" }
                     >
                         <span 
-                            class="absolute h-[18px] w-[18px] left-[3px] bottom-[3px] bg-white rounded-full transition-all duration-300"
-                            style=move || if enabled_signal.get() { "transform: translateX(20px);" } else { "transform: translateX(0);" }
+                            class="absolute h-[18px] w-[18px] left-[3px] bottom-[3px] rounded-full transition-all duration-300"
+                            style=move || {
+                                let thumb_color = "background-color: var(--color-toggle-thumb);";
+                                let transform = if enabled_signal.get() { "transform: translateX(20px);" } else { "transform: translateX(0);" };
+                                format!("{} {}", thumb_color, transform)
+                            }
                         ></span>
                     </span>
                 </label>

@@ -21,6 +21,7 @@ body {
     --color-text-secondary: #666;
     --color-text-muted: #999;
     --color-bg: #f6f6f6;
+    --color-bg-secondary: #f8f9fa;
     --color-panel-bg: #ffffff;
     --color-panel-header-bg: #f8f8f8;
     --color-workspace-bg: #fafafa;
@@ -32,6 +33,8 @@ body {
     --color-danger-hover: #b21f2f;
     --color-secondary: #6c757d;
     --color-secondary-hover: #545b62;
+    --color-toggle-bg: #ccc;
+    --color-toggle-thumb: #ffffff;
     color: var(--color-text);
     background-color: var(--color-bg);
 }
@@ -43,6 +46,7 @@ body {
         --color-text-secondary: #999;
         --color-text-muted: #666;
         --color-bg: #2f2f2f;
+        --color-bg-secondary: #252525;
         --color-panel-bg: #1e1e1e;
         --color-panel-header-bg: #252525;
         --color-workspace-bg: #1a1a1a;
@@ -54,6 +58,8 @@ body {
         --color-danger-hover: #c82333;
         --color-secondary: #6c757d;
         --color-secondary-hover: #5a6268;
+        --color-toggle-bg: #555;
+        --color-toggle-thumb: #ffffff;
     }
 }
 
