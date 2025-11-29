@@ -8,23 +8,6 @@ use miorin_core::prelude::*;
 use wasm_bindgen_futures::spawn_local;
 
 #[component]
-fn MainView(
-    cubes: RwSignal<Vec<Cube>>, raw_entries: RwSignal<Vec<Raw>>,
-    open_settings: impl Fn(web_sys::MouseEvent) + 'static,
-) -> impl IntoView {
-    view! {
-        <div
-            class="grid h-screen max-h-screen overflow-hidden"
-            style="grid-template-columns: 250px 1fr 300px; background-color: var(--color-bg);"
-        >
-            <GlacierPanel cubes=cubes />
-            <Workspace />
-            <StreamPanel raw_entries=raw_entries open_settings=open_settings />
-        </div>
-    }
-}
-
-#[component]
 pub fn App() -> impl IntoView {
     // Load raw entries from database
     let raw_entries = RwSignal::new(Vec::<Raw>::new());
@@ -94,6 +77,23 @@ pub fn App() -> impl IntoView {
 }
 
 #[component]
+fn MainView(
+    cubes: RwSignal<Vec<Cube>>, raw_entries: RwSignal<Vec<Raw>>,
+    open_settings: impl Fn(web_sys::MouseEvent) + 'static,
+) -> impl IntoView {
+    view! {
+        <div
+            class="grid h-screen max-h-screen overflow-hidden bg-[var(--color-bg)]"
+            style="grid-template-columns: 250px 1fr 300px;"
+        >
+            <GlacierPanel cubes=cubes />
+            <Workspace />
+            <StreamPanel raw_entries=raw_entries open_settings=open_settings />
+        </div>
+    }
+}
+
+#[component]
 fn GlacierPanel(cubes: RwSignal<Vec<Cube>>) -> impl IntoView {
     let cubes_clone = cubes.clone();
     let create_cube_action = move |_| {
@@ -133,8 +133,7 @@ fn GlacierPanel(cubes: RwSignal<Vec<Cube>>) -> impl IntoView {
             title="Glacier"
             header_actions=view! {
                 <button
-                    class="p-1.5 text-white border-none rounded cursor-pointer flex items-center justify-center w-7 h-7 min-w-7 transition-colors duration-200"
-                    style="background-color: var(--color-primary, #007bff);"
+                    class="p-1.5 text-white border-none rounded cursor-pointer flex items-center justify-center w-7 h-7 min-w-7 transition-colors duration-200 bg-[var(--color-primary,#007bff)]"
                     on:click=create_cube_action
                 >
                     <Icon icon=LuPlus width="16" height="16" />
@@ -156,18 +155,16 @@ fn GlacierPanel(cubes: RwSignal<Vec<Cube>>) -> impl IntoView {
 fn Workspace() -> impl IntoView {
     view! {
         <div
-            class="flex flex-col h-full border-r overflow-hidden"
-            style="border-color: var(--color-border); background-color: var(--color-workspace-bg);"
+            class="flex flex-col h-full border-r overflow-hidden border-[var(--color-border)] bg-[var(--color-workspace-bg)]"
         >
             <div
-                class="p-4 border-b"
-                style="border-color: var(--color-border); background-color: var(--color-panel-header-bg);"
+                class="p-4 border-b border-[var(--color-border)] bg-[var(--color-panel-header-bg)]"
             >
-                <h2 class="m-0 text-base font-semibold" style="color: var(--color-text);">"Workspace"</h2>
+                <h2 class="m-0 text-base font-semibold text-[var(--color-text)]">"Workspace"</h2>
             </div>
             <div class="flex-1 overflow-y-auto p-2">
                 <div class="p-8 min-h-full">
-                    <p class="italic text-center mt-12" style="color: var(--color-text-muted);">
+                    <p class="italic text-center mt-12 text-[var(--color-text-muted)]">
                         "Select a cube from Glacier or drag raw material from Stream to start editing..."
                     </p>
                 </div>
@@ -227,11 +224,10 @@ fn CubeEntry(cube: Cube) -> impl IntoView {
     let created = created_at.format("%Y-%m-%d %H:%M").to_string();
     view! {
         <div
-            class="p-3 border rounded cursor-pointer transition-colors duration-200 hover:bg-(--color-hover)"
-            style="border-color: var(--color-border); background-color: var(--color-panel-bg);"
+            class="p-3 border rounded cursor-pointer transition-colors duration-200 hover-bg-panel border-[var(--color-border)] bg-[var(--color-panel-bg)]"
         >
-            <div class="font-medium mb-1" style="color: var(--color-text);">{title}</div>
-            <div class="text-xs mt-1" style="color: var(--color-text-secondary);">{created}</div>
+            <div class="font-medium mb-1 text-[var(--color-text)]">{title}</div>
+            <div class="text-xs mt-1 text-[var(--color-text-secondary)]">{created}</div>
         </div>
     }
 }
@@ -243,12 +239,11 @@ fn RawEntry(raw: Raw) -> impl IntoView {
     let content = raw.inner.content.clone();
     view! {
         <div
-            class="p-3 border rounded cursor-pointer transition-colors duration-200 w-full max-w-full box-border wrap-break-word hover:bg-(--color-hover)"
-            style="border-color: var(--color-border); background-color: var(--color-panel-bg);"
+            class="p-3 border rounded cursor-pointer transition-colors duration-200 w-full max-w-full box-border wrap-break-word hover-bg-panel border-[var(--color-border)] bg-[var(--color-panel-bg)]"
         >
             <RawPreview content=content />
-            <div class="text-xs mt-1" style="color: var(--color-text-secondary);">{source}</div>
-            <div class="text-xs mt-1" style="color: var(--color-text-secondary);">{created}</div>
+            <div class="text-xs mt-1 text-[var(--color-text-secondary)]">{source}</div>
+            <div class="text-xs mt-1 text-[var(--color-text-secondary)]">{created}</div>
         </div>
     }
 }
@@ -267,7 +262,7 @@ fn RawPreview(content: RawContent) -> impl IntoView {
                     view! {
                         <>
                             <div class="text-xl">"📄"</div>
-                            <div class="flex-1 text-sm wrap-break-word" style="color: var(--color-text-secondary);">{preview_text}</div>
+                            <div class="flex-1 text-sm wrap-break-word text-[var(--color-text-secondary)]">{preview_text}</div>
                         </>
                     }.into_any()
                 }
@@ -335,7 +330,7 @@ fn RawPreview(content: RawContent) -> impl IntoView {
                                         }
                                     }}
                                 </div>
-                            <div class="flex-1 text-sm wrap-break-word" style="color: var(--color-text-secondary);">{format!("Image ({}x{})", img.width, img.height)}</div>
+                            <div class="flex-1 text-sm wrap-break-word text-[var(--color-text-secondary)]">{format!("Image ({}x{})", img.width, img.height)}</div>
                         </>
                     }.into_any()
                 }

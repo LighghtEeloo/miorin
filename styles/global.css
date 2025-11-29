@@ -1,4 +1,5 @@
-html, body {
+html,
+body {
     margin: 0;
     padding: 0;
     height: 100%;
@@ -24,7 +25,13 @@ html, body {
     --color-panel-header-bg: #f8f8f8;
     --color-workspace-bg: #fafafa;
     --color-border: #e0e0e0;
-    --color-hover: #f5f5f5;
+    --color-hover: #e8e8e8;
+    --color-primary: #007bff;
+    --color-primary-hover: #004085;
+    --color-danger: #dc3545;
+    --color-danger-hover: #b21f2f;
+    --color-secondary: #6c757d;
+    --color-secondary-hover: #545b62;
     color: var(--color-text);
     background-color: var(--color-bg);
 }
@@ -40,7 +47,13 @@ html, body {
         --color-panel-header-bg: #252525;
         --color-workspace-bg: #1a1a1a;
         --color-border: #3a3a3a;
-        --color-hover: #2a2a2a;
+        --color-hover: #3a3a3a;
+        --color-primary: #007bff;
+        --color-primary-hover: #0056b3;
+        --color-danger: #dc3545;
+        --color-danger-hover: #c82333;
+        --color-secondary: #6c757d;
+        --color-secondary-hover: #5a6268;
     }
 }
 
@@ -71,18 +84,39 @@ html, body {
     .panel-content {
         scrollbar-color: #333 transparent;
     }
-    
+
     .panel-content::-webkit-scrollbar-track {
         background: transparent;
     }
-    
+
     .panel-content::-webkit-scrollbar-thumb {
         background: #333;
         border: none;
     }
-    
+
     .panel-content::-webkit-scrollbar-thumb:hover {
         background: #444;
     }
 }
 
+/* Button hover states with CSS variables */
+.hover-bg-primary:hover {
+    background-color: var(--color-primary-hover, #0056b3) !important;
+}
+
+.hover-bg-danger:hover {
+    background-color: var(--color-danger-hover, #c82333) !important;
+}
+
+.hover-bg-secondary:hover {
+    background-color: var(--color-secondary-hover, #5a6268) !important;
+}
+
+.hover-bg-panel:hover {
+    background-color: var(--color-hover) !important;
+}
+
+button.disabled:hover,
+button:disabled:hover {
+    background-color: var(--color-text-secondary, #6c757d) !important;
+}

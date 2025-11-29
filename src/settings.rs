@@ -21,8 +21,7 @@ fn WatchPathItem(
 
     view! {
         <li 
-            class="flex items-center justify-between p-2.5 mb-2 rounded border"
-            style="background-color: var(--color-bg-secondary, #f8f9fa); border-color: var(--color-border, #dee2e6);"
+            class="flex items-center justify-between p-2.5 mb-2 rounded border bg-[var(--color-bg-secondary,#f8f9fa)] border-[var(--color-border,#dee2e6)]"
         >
             <div class="flex items-center gap-2 flex-1 mr-2.5">
                 <label class="relative inline-block w-11 h-6">
@@ -42,19 +41,17 @@ fn WatchPathItem(
                         ></span>
                     </span>
                 </label>
-                <span class="flex-1 break-all text-xs font-mono" style="color: var(--color-text-secondary, #6c757d);">{path}</span>
+                <span class="flex-1 break-all text-xs font-mono text-[var(--color-text-secondary,#6c757d)]">{path}</span>
             </div>
             <div class="flex gap-2">
                 <button
-                    class="p-2 border-none rounded cursor-pointer text-sm font-medium transition-colors duration-200 flex items-center justify-center gap-1.5 text-white hover:bg-[var(--color-primary-hover,#0056b3)]"
-                    style="background-color: var(--color-primary, #007bff);"
+                    class="p-2 border-none rounded cursor-pointer text-sm font-medium transition-colors duration-200 flex items-center justify-center gap-1.5 text-white hover-bg-primary bg-[var(--color-primary,#007bff)]"
                     on:click=move |_| on_import(path_for_import.clone())
                 >
                     <Icon icon=LuDownload width="16" height="16" />
                 </button>
                 <button
-                    class="p-2 border-none rounded cursor-pointer text-sm font-medium transition-colors duration-200 flex items-center justify-center gap-1.5 text-white hover:bg-[var(--color-danger-hover,#c82333)]"
-                    style="background-color: var(--color-danger, #dc3545);"
+                    class="p-2 border-none rounded cursor-pointer text-sm font-medium transition-colors duration-200 flex items-center justify-center gap-1.5 text-white hover-bg-danger bg-[var(--color-danger,#dc3545)]"
                     on:click=move |_| on_remove(path_for_remove.clone())
                 >
                     <Icon icon=LuTrash2 width="16" height="16" />
@@ -72,19 +69,16 @@ fn ProgressOrError(
     if let Some(path) = importing_path {
         view! {
             <div 
-                class="mt-2 p-2 rounded border"
-                style="background-color: var(--color-bg-secondary, #f8f9fa); border-color: var(--color-border, #dee2e6);"
+                class="mt-2 p-2 rounded border bg-[var(--color-bg-secondary,#f8f9fa)] border-[var(--color-border,#dee2e6)]"
             >
-                <div class="text-xs mb-1" style="color: var(--color-text-secondary, #6c757d);">
+                <div class="text-xs mb-1 text-[var(--color-text-secondary,#6c757d)]">
                     {format!("Importing files from {}...", path)}
                 </div>
                 <div 
-                    class="w-full h-2 rounded overflow-hidden mt-2 relative"
-                    style="background-color: var(--color-border, #dee2e6);"
+                    class="w-full h-2 rounded overflow-hidden mt-2 relative bg-[var(--color-border,#dee2e6)]"
                 >
                     <div 
-                        class="h-full w-full rounded opacity-80 animate-pulse"
-                        style="background-color: var(--color-primary, #007bff);"
+                        class="h-full w-full rounded opacity-80 animate-pulse bg-[var(--color-primary,#007bff)]"
                     ></div>
                 </div>
             </div>
@@ -92,8 +86,7 @@ fn ProgressOrError(
     } else if let Some(msg) = error_message {
         view! {
             <div 
-                class="mt-2 p-2 rounded border text-xs"
-                style="background-color: var(--color-error-bg, #fee); color: var(--color-error-text, #c33); border-color: var(--color-error-border, #fcc);"
+                class="mt-2 p-2 rounded border text-xs bg-[var(--color-error-bg,#fee)] text-[var(--color-error-text,#c33)] border-[var(--color-error-border,#fcc)]"
             >
                 {msg}
             </div>
@@ -112,8 +105,7 @@ fn AddPathInput(
         <div class="flex gap-2 mt-2.5">
             <input
                 type="text"
-                class="flex-1 w-full px-3 py-2 border rounded text-sm outline-none"
-                style="border-color: var(--color-border, #ccc); background-color: var(--color-bg); color: var(--color-text);"
+                class="flex-1 w-full px-3 py-2 border rounded text-sm outline-none border-[var(--color-border,#ccc)] bg-[var(--color-bg)] text-[var(--color-text)]"
                 placeholder="Enter path to watch (e.g., ~/Downloads/Pic)"
                 prop:value=move || new_path.get()
                 on:input=move |ev| {
@@ -133,8 +125,7 @@ fn AddPathInput(
                 }
             />
             <button 
-                class="p-2 border-none rounded cursor-pointer text-sm font-medium transition-colors duration-200 flex items-center justify-center gap-1.5 text-white w-8 h-8 min-w-8 hover:bg-[var(--color-primary-hover,#0056b3)]"
-                style="background-color: var(--color-primary, #007bff);"
+                class="p-2 border-none rounded cursor-pointer text-sm font-medium transition-colors duration-200 flex items-center justify-center gap-1.5 text-white w-8 h-8 min-w-8 hover-bg-primary bg-[var(--color-primary,#007bff)]"
                 on:click=move |_| on_add()
             >
                 <Icon icon=LuPlus width="16" height="16" />
@@ -147,8 +138,7 @@ fn AddPathInput(
 fn CloseButton(close_settings: impl Fn() + 'static) -> impl IntoView {
     view! {
         <button 
-            class="fixed top-5 left-5 p-2 text-white border-none rounded cursor-pointer text-sm font-medium transition-colors duration-200 z-[1001] flex items-center justify-center hover:bg-[var(--color-secondary-hover,#5a6268)]"
-            style="background-color: var(--color-secondary, #6c757d);"
+            class="fixed top-5 left-5 p-2 text-white border-none rounded cursor-pointer text-sm font-medium transition-colors duration-200 z-[1001] flex items-center justify-center hover-bg-secondary bg-[var(--color-secondary,#6c757d)]"
             on:click=move |_| close_settings()
         >
             <Icon icon=LuX width="20" height="20" />
@@ -352,17 +342,15 @@ pub fn Settings(
 
     view! {
         <div 
-            class="fixed top-0 left-0 right-0 bottom-0 w-full h-screen overflow-y-auto z-[1000]"
-            style="background-color: var(--color-bg);"
+            class="fixed top-0 left-0 right-0 bottom-0 w-full h-screen overflow-y-auto z-[1000] bg-[var(--color-bg)]"
         >
             <CloseButton close_settings=close_settings />
             <div 
-                class="pt-[60px] px-5 pb-5 max-w-[800px] mx-auto"
-                style="background-color: var(--color-bg); color: var(--color-text); font-family: system-ui, -apple-system, sans-serif;"
+                class="pt-[60px] px-5 pb-5 max-w-[800px] mx-auto bg-[var(--color-bg)] text-[var(--color-text)] font-[system-ui,-apple-system,sans-serif]"
             >
                 <div class="mb-8">
-                    <h2 class="text-lg font-semibold mb-4" style="color: var(--color-text);">Watch Paths</h2>
-                    <p class="mb-4 text-xs" style="color: var(--color-text-secondary, #6c757d);">
+                    <h2 class="text-lg font-semibold mb-4 text-[var(--color-text)]">Watch Paths</h2>
+                    <p class="mb-4 text-xs text-[var(--color-text-secondary,#6c757d)]">
                         Directories to watch for new files.
                         Only files directly in these directories (not in subdirectories) will be monitored.
                         Toggle each path to enable or disable watching.
@@ -393,9 +381,9 @@ pub fn Settings(
                         }.into_any()
                     }}
                 </div>
-                <div class="mb-8 mt-10 pt-8 border-t" style="border-color: var(--color-border, #dee2e6);">
-                    <h2 class="text-lg font-semibold mb-4" style="color: var(--color-text);">Debug</h2>
-                    <p class="mb-4 text-xs" style="color: var(--color-text-secondary, #6c757d);">
+                <div class="mb-8 mt-10 pt-8 border-t border-[var(--color-border,#dee2e6)]">
+                    <h2 class="text-lg font-semibold mb-4 text-[var(--color-text)]">Debug</h2>
+                    <p class="mb-4 text-xs text-[var(--color-text-secondary,#6c757d)]">
                         Debug functions for development and testing.
                     </p>
                     <div class="flex gap-2.5 flex-wrap">
@@ -404,7 +392,7 @@ pub fn Settings(
                             let clearing_entries_signal = clearing_entries.clone();
                             view! {
                                 <button
-                                    class="px-5 py-2.5 text-white border-none rounded cursor-pointer text-sm font-medium transition-colors duration-200 flex items-center gap-2 disabled:cursor-not-allowed hover:bg-[var(--color-danger-hover,#c82333)] disabled:hover:bg-[var(--color-text-secondary,#6c757d)]"
+                                    class="px-5 py-2.5 text-white border-none rounded cursor-pointer text-sm font-medium transition-colors duration-200 flex items-center gap-2 disabled:cursor-not-allowed hover-bg-danger disabled:hover-bg-secondary"
                                     style=move || format!(
                                         "background-color: {};",
                                         if clearing_entries_value { "var(--color-text-secondary, #6c757d)" } else { "var(--color-danger, #dc3545)" }
@@ -445,7 +433,7 @@ pub fn Settings(
                             let has_data = settings_storage_data.get().is_some();
                             view! {
                                 <button
-                                    class="px-5 py-2.5 text-white border-none rounded cursor-pointer text-sm font-medium transition-colors duration-200 flex items-center gap-2 disabled:cursor-not-allowed hover:bg-[var(--color-danger-hover,#c82333)] disabled:hover:bg-[var(--color-text-secondary,#6c757d)]"
+                                    class="px-5 py-2.5 text-white border-none rounded cursor-pointer text-sm font-medium transition-colors duration-200 flex items-center gap-2 disabled:cursor-not-allowed hover-bg-danger disabled:hover-bg-secondary"
                                     style=move || format!(
                                         "background-color: {};",
                                         if showing_settings_storage_value { "var(--color-text-secondary, #6c757d)" } else { "var(--color-danger, #dc3545)" }
@@ -490,8 +478,7 @@ pub fn Settings(
                         {move || {
                             view! {
                                 <button
-                                    class="px-5 py-2.5 text-white border-none rounded cursor-pointer text-sm font-medium transition-colors duration-200 flex items-center gap-2 hover:bg-[var(--color-danger-hover,#c82333)]"
-                                    style="background-color: var(--color-danger, #dc3545);"
+                                    class="px-5 py-2.5 text-white border-none rounded cursor-pointer text-sm font-medium transition-colors duration-200 flex items-center gap-2 hover-bg-danger bg-[var(--color-danger,#dc3545)]"
                                     on:click=move |_| {
                                         // Force refresh by reloading the page
                                         web_sys::window()
@@ -506,8 +493,7 @@ pub fn Settings(
                         {move || {
                             view! {
                                 <button
-                                    class="px-5 py-2.5 text-white border-none rounded cursor-pointer text-sm font-medium transition-colors duration-200 flex items-center gap-2 hover:bg-[var(--color-danger-hover,#c82333)]"
-                                    style="background-color: var(--color-danger, #dc3545);"
+                                    class="px-5 py-2.5 text-white border-none rounded cursor-pointer text-sm font-medium transition-colors duration-200 flex items-center gap-2 hover-bg-danger bg-[var(--color-danger,#dc3545)]"
                                     on:click=move |_| {
                                         spawn_local(async move {
                                             match tauri_api::reveal_data_folder().await {
@@ -533,8 +519,7 @@ pub fn Settings(
                         {move || {
                             view! {
                                 <button
-                                    class="px-5 py-2.5 text-white border-none rounded cursor-pointer text-sm font-medium transition-colors duration-200 flex items-center gap-2 hover:bg-[var(--color-danger-hover,#c82333)]"
-                                    style="background-color: var(--color-danger, #dc3545);"
+                                    class="px-5 py-2.5 text-white border-none rounded cursor-pointer text-sm font-medium transition-colors duration-200 flex items-center gap-2 hover-bg-danger bg-[var(--color-danger,#dc3545)]"
                                     on:click=move |_| {
                                         spawn_local(async move {
                                             if let Err(e) = tauri_api::toggle_devtools().await {
@@ -556,9 +541,9 @@ pub fn Settings(
                         settings_storage_data_value.map(|data| {
                             let data_clone = data.clone();
                             view! {
-                                <div class="mt-5 bg-transparent rounded border p-0" style="border-color: var(--color-border, #dee2e6);">
+                                <div class="mt-5 bg-transparent rounded border p-0 border-[var(--color-border,#dee2e6)]">
                                     <h3 class="m-0 px-4 pt-4 pb-2.5 text-sm font-semibold">Settings Storage State:</h3>
-                                    <pre class="m-0 px-4 pb-4 bg-white overflow-x-auto font-mono text-xs whitespace-pre-wrap break-words leading-snug" style="background-color: var(--color-bg, #ffffff);">{data_clone}</pre>
+                                    <pre class="m-0 px-4 pb-4 overflow-x-auto font-mono text-xs whitespace-pre-wrap break-words leading-snug bg-[var(--color-bg,#ffffff)]">{data_clone}</pre>
                                 </div>
                             }
                         })

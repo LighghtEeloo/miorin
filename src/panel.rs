@@ -9,21 +9,16 @@ pub fn Panel(
     view! {
         <div class="flex flex-col box-border max-h-full min-h-0 overflow-hidden h-screen">
             <div 
-                class="flex flex-col h-full max-h-full min-h-0 border-r overflow-hidden"
-                style="border-color: var(--color-border); background-color: var(--color-panel-bg);"
+                class="flex flex-col h-full max-h-full min-h-0 border-r overflow-hidden border-[var(--color-border)] bg-[var(--color-panel-bg)]"
             >
                 <div 
                     class=if has_actions {
-                        "shrink-0 p-4 border-b flex justify-between items-center"
+                        "shrink-0 p-4 border-b flex justify-between items-center border-[var(--color-border)] bg-[var(--color-panel-header-bg)]"
                     } else {
-                        "shrink-0 p-4 border-b"
+                        "shrink-0 p-4 border-b border-[var(--color-border)] bg-[var(--color-panel-header-bg)]"
                     }
-                    style="border-color: var(--color-border); background-color: var(--color-panel-header-bg);"
                 >
-                    <h2 
-                        class="m-0 text-base font-semibold"
-                        style="color: var(--color-text);"
-                    >
+                    <h2 class="m-0 text-base font-semibold text-[var(--color-text)]">
                         {title}
                     </h2>
                     {header_actions}
