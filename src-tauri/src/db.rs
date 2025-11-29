@@ -157,7 +157,14 @@ pub async fn get_all_raw_entries(app: AppHandle) -> Result<Vec<Raw>, String> {
         let content: RawContent = serde_json::from_str(&content_json)
             .map_err(|e| format!("Failed to parse content: {}", e))?;
 
-        entries.push(Raw { id, created_at, updated_at, vibe, inner: RawInner { source, content } });
+        entries.push(Raw {
+            id,
+            tags: vec![],
+            created_at,
+            updated_at,
+            vibe,
+            inner: RawInner { source, content },
+        });
     }
 
     tracing::debug!(entry_count = entries.len(), "Returning raw entries");
@@ -166,9 +173,7 @@ pub async fn get_all_raw_entries(app: AppHandle) -> Result<Vec<Raw>, String> {
 
 /// Find existing raw entry by source path and created date
 pub(crate) async fn find_duplicate_raw_entry(
-    pool: &SqlitePool,
-    source: &RawSource,
-    created_at: &DateTime<Utc>,
+    pool: &SqlitePool, source: &RawSource, created_at: &DateTime<Utc>,
 ) -> Result<Option<Raw>, String> {
     // Only check for FileWatcher sources with paths
     let source_path = if let RawSource::FileWatcher { original_path } = source {
@@ -180,7 +185,7 @@ pub(crate) async fn find_duplicate_raw_entry(
 
     // Get all raw entries and check for matching source paths and created dates
     let rows = sqlx::query(
-        "SELECT id, created_at, updated_at, vibe_json, source_json, content_json FROM raw_entries"
+        "SELECT id, created_at, updated_at, vibe_json, source_json, content_json FROM raw_entries",
     )
     .fetch_all(pool)
     .await
@@ -191,7 +196,7 @@ pub(crate) async fn find_duplicate_raw_entry(
 
     for row in rows {
         let row_created_at_str: String = row.get("created_at");
-        
+
         // Check if created_at matches
         if row_created_at_str != created_at_str {
             continue;
@@ -204,16 +209,17 @@ pub(crate) async fn find_duplicate_raw_entry(
         // Check if this is a FileWatcher with the same path
         if let RawSource::FileWatcher { original_path: existing_path } = &existing_source {
             // Compare paths (normalize them for comparison)
-            let existing_normalized = existing_path.canonicalize()
-                .unwrap_or_else(|_| existing_path.clone());
-            let new_normalized = source_path.canonicalize()
-                .unwrap_or_else(|_| source_path.clone());
-            
+            let existing_normalized =
+                existing_path.canonicalize().unwrap_or_else(|_| existing_path.clone());
+            let new_normalized = source_path.canonicalize().unwrap_or_else(|_| source_path.clone());
+
             // Compare normalized paths
             if existing_normalized == new_normalized {
                 // Found a duplicate, return the existing entry
                 let id_str: String = row.get("id");
-                let id = RawId(uuid::Uuid::parse_str(&id_str).map_err(|e| format!("Invalid UUID: {}", e))?);
+                let id = RawId(
+                    uuid::Uuid::parse_str(&id_str).map_err(|e| format!("Invalid UUID: {}", e))?,
+                );
 
                 let created_at: DateTime<Utc> = serde_json::from_str(&row_created_at_str)
                     .map_err(|e| format!("Failed to parse created_at: {}", e))?;
@@ -222,19 +228,20 @@ pub(crate) async fn find_duplicate_raw_entry(
                 let updated_at: DateTime<Utc> = serde_json::from_str(&updated_at_str)
                     .map_err(|e| format!("Failed to parse updated_at: {}", e))?;
 
-                let vibe: Option<Vibe> =
-                    if let Some(vibe_json) = row.try_get::<Option<String>, _>("vibe_json").ok().flatten() {
-                        if vibe_json == "null" || vibe_json.is_empty() {
-                            None
-                        } else {
-                            Some(
-                                serde_json::from_str(&vibe_json)
-                                    .map_err(|e| format!("Failed to parse vibe: {}", e))?,
-                            )
-                        }
-                    } else {
+                let vibe: Option<Vibe> = if let Some(vibe_json) =
+                    row.try_get::<Option<String>, _>("vibe_json").ok().flatten()
+                {
+                    if vibe_json == "null" || vibe_json.is_empty() {
                         None
-                    };
+                    } else {
+                        Some(
+                            serde_json::from_str(&vibe_json)
+                                .map_err(|e| format!("Failed to parse vibe: {}", e))?,
+                        )
+                    }
+                } else {
+                    None
+                };
 
                 let content_json: String = row.get("content_json");
                 let content: RawContent = serde_json::from_str(&content_json)
@@ -242,13 +249,11 @@ pub(crate) async fn find_duplicate_raw_entry(
 
                 return Ok(Some(Raw {
                     id,
+                    tags: vec![],
                     created_at,
                     updated_at,
                     vibe,
-                    inner: RawInner {
-                        source: existing_source,
-                        content,
-                    },
+                    inner: RawInner { source: existing_source, content },
                 }));
             }
         }
@@ -260,10 +265,7 @@ pub(crate) async fn find_duplicate_raw_entry(
 /// Create a new raw entry
 #[tauri::command]
 pub async fn create_raw_entry(
-    app: AppHandle,
-    inner: RawInner,
-    created_at: Option<String>,
-    updated_at: Option<String>,
+    app: AppHandle, inner: RawInner, created_at: Option<String>, updated_at: Option<String>,
 ) -> Result<Raw, String> {
     tracing::debug!("Creating new raw entry");
     let pool = get_db_pool(&app).await.map_err(|e| {
@@ -279,7 +281,7 @@ pub async fn create_raw_entry(
     } else {
         Utc::now()
     };
-    
+
     let updated_at = if let Some(updated_at_str) = updated_at {
         serde_json::from_str(&updated_at_str)
             .map_err(|e| format!("Failed to parse updated_at: {}", e))?
@@ -298,7 +300,7 @@ pub async fn create_raw_entry(
 
     let id = RawId(uuid::Uuid::now_v7());
 
-    let raw = Raw { id, created_at, updated_at, vibe: None, inner };
+    let raw = Raw { id, tags: vec![], created_at, updated_at, vibe: None, inner };
 
     let id_str = id.0.to_string();
     let created_at_str = serde_json::to_string(&raw.created_at)
@@ -389,6 +391,7 @@ pub async fn update_raw_entry(
 
     let raw = Raw {
         id: raw_id,
+        tags: vec![],
         created_at,
         updated_at,
         vibe: new_vibe,
@@ -468,6 +471,28 @@ pub async fn get_all_cubes(app: AppHandle) -> Result<Vec<Cube>, String> {
         let id =
             CubeId(uuid::Uuid::parse_str(&id_str).map_err(|e| format!("Invalid UUID: {}", e))?);
 
+        let created_at_str: String = row.get("created_at");
+        let created_at: DateTime<Utc> = serde_json::from_str(&created_at_str)
+            .map_err(|e| format!("Failed to parse created_at: {}", e))?;
+
+        let updated_at_str: String = row.get("updated_at");
+        let updated_at: DateTime<Utc> = serde_json::from_str(&updated_at_str)
+            .map_err(|e| format!("Failed to parse updated_at: {}", e))?;
+
+        let vibe: Option<Vibe> =
+            if let Some(vibe_json) = row.try_get::<Option<String>, _>("vibe_json").ok().flatten() {
+                if vibe_json == "null" || vibe_json.is_empty() {
+                    None
+                } else {
+                    Some(
+                        serde_json::from_str(&vibe_json)
+                            .map_err(|e| format!("Failed to parse vibe: {}", e))?,
+                    )
+                }
+            } else {
+                None
+            };
+
         let pin: i64 = row.get("pin");
         let pin_bool = pin != 0;
 
@@ -475,7 +500,14 @@ pub async fn get_all_cubes(app: AppHandle) -> Result<Vec<Cube>, String> {
         let content: CubeContent = serde_json::from_str(&content_json)
             .map_err(|e| format!("Failed to parse content: {}", e))?;
 
-        cubes.push(Cube { id, pin: pin_bool, content });
+        cubes.push(Cube {
+            id,
+            tags: vec![],
+            created_at,
+            updated_at,
+            vibe,
+            inner: CubeInner { pin: pin_bool, content },
+        });
     }
 
     Ok(cubes)
@@ -489,15 +521,22 @@ pub async fn create_cube(app: AppHandle, pin: bool, content: CubeContent) -> Res
     let id = CubeId(uuid::Uuid::now_v7());
     let now = Utc::now();
 
-    let cube = Cube { id, pin, content };
+    let cube = Cube {
+        id,
+        tags: vec![],
+        created_at: now,
+        updated_at: now,
+        vibe: None,
+        inner: CubeInner { pin, content },
+    };
 
     let id_str = id.0.to_string();
-    let created_at_str = serde_json::to_string(&now)
+    let created_at_str = serde_json::to_string(&cube.created_at)
         .map_err(|e| format!("Failed to serialize created_at: {}", e))?;
-    let updated_at_str = serde_json::to_string(&now)
+    let updated_at_str = serde_json::to_string(&cube.updated_at)
         .map_err(|e| format!("Failed to serialize updated_at: {}", e))?;
-    let pin_int = if pin { 1 } else { 0 };
-    let content_json = serde_json::to_string(&cube.content)
+    let pin_int = if cube.inner.pin { 1 } else { 0 };
+    let content_json = serde_json::to_string(&cube.inner.content)
         .map_err(|e| format!("Failed to serialize content: {}", e))?;
 
     sqlx::query(
@@ -526,12 +565,32 @@ pub async fn update_cube(
     let cube_id = CubeId(uuid::Uuid::parse_str(&id).map_err(|e| format!("Invalid UUID: {}", e))?);
 
     // Get existing cube
-    let row = sqlx::query("SELECT id, pin, content_json FROM cubes WHERE id = ?")
-        .bind(&id)
-        .fetch_optional(&pool)
-        .await
-        .map_err(|e| format!("Query error: {}", e))?
-        .ok_or("Cube not found")?;
+    let row = sqlx::query(
+        "SELECT id, pin, content_json, created_at, updated_at, vibe_json FROM cubes WHERE id = ?",
+    )
+    .bind(&id)
+    .fetch_optional(&pool)
+    .await
+    .map_err(|e| format!("Query error: {}", e))?
+    .ok_or("Cube not found")?;
+
+    let created_at_str: String = row.get("created_at");
+    let created_at: DateTime<Utc> = serde_json::from_str(&created_at_str)
+        .map_err(|e| format!("Failed to parse created_at: {}", e))?;
+
+    let vibe: Option<Vibe> =
+        if let Some(vibe_json) = row.try_get::<Option<String>, _>("vibe_json").ok().flatten() {
+            if vibe_json == "null" || vibe_json.is_empty() {
+                None
+            } else {
+                Some(
+                    serde_json::from_str(&vibe_json)
+                        .map_err(|e| format!("Failed to parse vibe: {}", e))?,
+                )
+            }
+        } else {
+            None
+        };
 
     let current_pin: i64 = row.get("pin");
     let current_pin_bool = current_pin != 0;
@@ -543,12 +602,21 @@ pub async fn update_cube(
     let new_pin = pin.unwrap_or(current_pin_bool);
     let new_content = content.unwrap_or(current_content);
 
-    let cube = Cube { id: cube_id, pin: new_pin, content: new_content };
+    let updated_at = Utc::now();
 
-    let updated_at_str = serde_json::to_string(&Utc::now())
+    let cube = Cube {
+        id: cube_id,
+        tags: vec![],
+        created_at,
+        updated_at,
+        vibe,
+        inner: CubeInner { pin: new_pin, content: new_content },
+    };
+
+    let updated_at_str = serde_json::to_string(&cube.updated_at)
         .map_err(|e| format!("Failed to serialize updated_at: {}", e))?;
-    let pin_int = if cube.pin { 1 } else { 0 };
-    let content_json = serde_json::to_string(&cube.content)
+    let pin_int = if cube.inner.pin { 1 } else { 0 };
+    let content_json = serde_json::to_string(&cube.inner.content)
         .map_err(|e| format!("Failed to serialize content: {}", e))?;
 
     sqlx::query("UPDATE cubes SET pin = ?, content_json = ?, updated_at = ? WHERE id = ?")
