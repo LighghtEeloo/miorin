@@ -32,6 +32,20 @@ fn is_devtools_open(window: tauri::WebviewWindow) -> bool {
     window.is_devtools_open()
 }
 
+/// Open a folder picker dialog and return the selected path
+#[tauri::command]
+async fn open_folder_dialog_cmd() -> Result<Option<String>, String> {
+    use rfd::AsyncFileDialog;
+    
+    let default_dir = dirs::home_dir().unwrap_or_default();
+    let dialog = AsyncFileDialog::new()
+        .set_directory(&default_dir)
+        .pick_folder()
+        .await;
+    
+    Ok(dialog.map(|handle| handle.path().to_string_lossy().to_string()))
+}
+
 /// Reveal the app data folder in the file manager
 #[tauri::command]
 async fn reveal_data_folder_cmd(app: AppHandle) -> Result<String, String> {
@@ -147,6 +161,7 @@ pub fn run() {
             generate_thumbnail_cmd,
             get_all_store_data_cmd,
             reveal_data_folder_cmd,
+            open_folder_dialog_cmd,
         ])
         .setup(|app| {
             // Start file watcher for configured path

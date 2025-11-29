@@ -128,6 +128,26 @@ fn AddPathInput(
                 on_click=move |_| on_add_clone()
                 class="pl-2"
             />
+            <button::InterfaceButton
+                icon=view! { <Icon icon=LuFolderOpen width="16" height="16" /> }
+                color_variant="secondary"
+                on_click=move |_| {
+                    let new_path_clone = new_path.clone();
+                    spawn_local(async move {
+                        match tauri_api::open_folder_dialog().await {
+                            Ok(Some(path)) => {
+                                new_path_clone.set(path);
+                            }
+                            Ok(None) => {
+                                // User cancelled the dialog
+                            }
+                            Err(e) => {
+                                web_sys::console::error_1(&format!("Failed to open folder dialog: {}", e).into());
+                            }
+                        }
+                    });
+                }
+            />
             <input
                 type="text"
                 class="flex-1 w-full px-3 py-2 border rounded text-sm outline-none border-[var(--color-border,#ccc)] bg-[var(--color-bg)] text-[var(--color-text)]"

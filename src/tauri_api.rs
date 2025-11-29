@@ -248,6 +248,11 @@ pub async fn reveal_data_folder() -> Result<String, String> {
     invoke_tauri("reveal_data_folder_cmd", serde_json::json!({})).await
 }
 
+/// Open a folder picker dialog and return the selected path
+pub async fn open_folder_dialog() -> Result<Option<String>, String> {
+    invoke_tauri("open_folder_dialog_cmd", serde_json::json!({})).await
+}
+
 /// Toggle developer console visibility
 pub async fn toggle_devtools() -> Result<(), String> {
     invoke_tauri("toggle_devtools", serde_json::json!({})).await
