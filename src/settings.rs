@@ -10,9 +10,9 @@ use wasm_bindgen::JsCast;
 #[component]
 fn WatchPathItem(
     config: tauri_api::WatchPathConfig,
-    on_toggle: impl Fn(String, bool) + 'static,
-    on_remove: impl Fn(String) + 'static,
-    on_import: impl Fn(String) + 'static,
+    on_toggle: impl Fn(String, bool) + Clone + Send + 'static,
+    on_remove: impl Fn(String) + Clone + Send + 'static,
+    on_import: impl Fn(String) + Clone + Send + 'static,
 ) -> impl IntoView {
     let path = config.path.clone();
     let enabled_signal = RwSignal::new(config.enabled);
@@ -58,11 +58,21 @@ fn WatchPathItem(
                     color_variant="primary"
                     on_click=move |_| on_import(path_for_import.clone())
                 />
-                <button::InterfaceButton
-                    icon=view! { <Icon icon=LuTrash2 width="16" height="16" /> }
-                    color_variant="danger"
-                    on_click=move |_| on_remove(path_for_remove.clone())
-                />
+                {move || {
+                    if !enabled_signal.get() {
+                        let path_for_remove = path_for_remove.clone();
+                        let on_remove_clone = on_remove.clone();
+                        view! {
+                            <button::InterfaceButton
+                                icon=view! { <Icon icon=LuTrash2 width="16" height="16" /> }
+                                color_variant="danger"
+                                on_click=move |_| on_remove_clone(path_for_remove.clone())
+                            />
+                        }.into_any()
+                    } else {
+                        view! {}.into_any()
+                    }
+                }}
             </div>
         </li>
     }
