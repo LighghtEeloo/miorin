@@ -1,19 +1,6 @@
 use leptos::prelude::*;
 use styled::style;
 
-// Common panel styles - helper functions that return the style! macro result
-pub fn panel_wrapper_styles() -> Result<styled::Style, stylist::Error> {
-    style! {
-        .panel-wrapper {
-            height: 100%;
-            max-height: 100%;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-        }
-    }
-}
-
 pub fn panel_styles() -> Result<styled::Style, stylist::Error> {
     style! {
         .panel {
@@ -24,7 +11,7 @@ pub fn panel_styles() -> Result<styled::Style, stylist::Error> {
             min-height: 0;
             border-right: 1px solid var(--color-border);
             background-color: var(--color-panel-bg);
-            overflow: hidden;
+            overflow: auto;
         }
         .panel:last-child {
             border-right: none;
@@ -90,13 +77,14 @@ pub fn panel_header_with_actions_styles() -> Result<styled::Style, stylist::Erro
 pub fn panel_content_styles() -> Result<styled::Style, stylist::Error> {
     style! {
         .panel-content {
+            display: flex;
+            flex-direction: column;
             flex: 1 1 0;
             min-height: 0;
-            overflow-y: auto;
-            overflow-x: hidden;
+            // overflow-y: auto;
+            // overflow-x: hidden;
+            overflow: auto;
             padding: 0.5rem;
-            scrollbar-width: auto;
-            scrollbar-color: #888 #f0f0f0;
             box-sizing: border-box;
         }
         .panel-content::-webkit-scrollbar {
@@ -121,8 +109,20 @@ pub fn panel_content_styles() -> Result<styled::Style, stylist::Error> {
 #[component]
 pub fn Panel(
     title: &'static str, #[prop(optional)] header_actions: Option<AnyView>,
-    #[prop(optional)] wrapper: bool, children: Children,
+    children: Children,
 ) -> impl IntoView {
+    let panel_wrapper_styles = style! {
+        .panel-wrapper {
+            height: 100vh;
+            max-height: 100%;
+            min-height: 0;
+            overflow: auto;
+            display: flex;
+            flex-direction: column;
+            box-sizing: border-box;
+        }
+    };
+
     let has_actions = header_actions.is_some();
     let header_styles =
         if has_actions { panel_header_with_actions_styles() } else { panel_header_styles() };
@@ -143,14 +143,10 @@ pub fn Panel(
         </div>
     };
 
-    if wrapper {
-        styled::view! { panel_wrapper_styles(),
-            <div class="panel-wrapper">
-                {inner_panel}
-            </div>
-        }
-        .into_any()
-    } else {
-        inner_panel.into_any()
+    styled::view! { panel_wrapper_styles,
+        <div class="panel-wrapper">
+            {inner_panel}
+        </div>
     }
+    .into_any()
 }

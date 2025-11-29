@@ -238,7 +238,6 @@ fn StreamPanel(
     view! {
         <panel::Panel
             title="Stream"
-            wrapper=true
             header_actions=view! {
                 <button class="settings-button" on:click=open_settings>
                     <Icon icon=LuSettings width="16" height="16" />
@@ -333,6 +332,11 @@ fn RawEntry(raw: Raw) -> impl IntoView {
             background-color: var(--color-panel-bg);
             cursor: pointer;
             transition: background-color 0.2s;
+            width: 100%;
+            max-width: 100%;
+            box-sizing: border-box;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
         }
         .entry-item:hover {
             background-color: var(--color-hover);
