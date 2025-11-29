@@ -11,6 +11,8 @@ use wasm_bindgen_futures::spawn_local;
 use wasm_bindgen::JsCast;
 use std::rc::Rc;
 use std::cell::RefCell;
+use uuid::Uuid;
+use chrono::Utc;
 
 #[component]
 pub fn App() -> impl IntoView {
@@ -94,15 +96,17 @@ fn MainView(
     let right_width_clone = right_width.clone();
     spawn_local(async move {
         match tauri_api::get_panel_left_width().await {
-            Ok(width) => left_width_clone.set(width),
-            Err(e) => {
+            | Ok(width) => left_width_clone.set(width),
+            | Err(e) => {
                 web_sys::console::warn_1(&format!("Failed to load left panel width: {}", e).into());
             }
         }
         match tauri_api::get_panel_right_width().await {
-            Ok(width) => right_width_clone.set(width),
-            Err(e) => {
-                web_sys::console::warn_1(&format!("Failed to load right panel width: {}", e).into());
+            | Ok(width) => right_width_clone.set(width),
+            | Err(e) => {
+                web_sys::console::warn_1(
+                    &format!("Failed to load right panel width: {}", e).into(),
+                );
             }
         }
     });
@@ -110,7 +114,7 @@ fn MainView(
     // Debounce save timers
     let left_save_timeout = Rc::new(RefCell::new(None::<i32>));
     let right_save_timeout = Rc::new(RefCell::new(None::<i32>));
-    
+
     let on_resize_left = {
         let left_width = left_width.clone();
         let save_timeout = left_save_timeout.clone();
@@ -127,16 +131,20 @@ fn MainView(
                 let width_to_save = left_width_for_save.get();
                 spawn_local(async move {
                     if let Err(e) = tauri_api::set_panel_left_width(width_to_save).await {
-                        web_sys::console::error_1(&format!("Failed to save left panel width: {}", e).into());
+                        web_sys::console::error_1(
+                            &format!("Failed to save left panel width: {}", e).into(),
+                        );
                     }
                 });
                 save_timeout_clone.borrow_mut().take();
             }) as Box<dyn FnMut()>);
-            let timeout_id = web_sys::window().unwrap()
+            let timeout_id = web_sys::window()
+                .unwrap()
                 .set_timeout_with_callback_and_timeout_and_arguments_0(
                     closure.as_ref().unchecked_ref(),
                     500,
-                ).unwrap();
+                )
+                .unwrap();
             closure.forget();
             *save_timeout.borrow_mut() = Some(timeout_id);
         }) as std::rc::Rc<dyn Fn(f64)>
@@ -158,16 +166,20 @@ fn MainView(
                 let width_to_save = right_width_for_save.get();
                 spawn_local(async move {
                     if let Err(e) = tauri_api::set_panel_right_width(width_to_save).await {
-                        web_sys::console::error_1(&format!("Failed to save right panel width: {}", e).into());
+                        web_sys::console::error_1(
+                            &format!("Failed to save right panel width: {}", e).into(),
+                        );
                     }
                 });
                 save_timeout_clone.borrow_mut().take();
             }) as Box<dyn FnMut()>);
-            let timeout_id = web_sys::window().unwrap()
+            let timeout_id = web_sys::window()
+                .unwrap()
                 .set_timeout_with_callback_and_timeout_and_arguments_0(
                     closure.as_ref().unchecked_ref(),
                     500,
-                ).unwrap();
+                )
+                .unwrap();
             closure.forget();
             *save_timeout.borrow_mut() = Some(timeout_id);
         }) as std::rc::Rc<dyn Fn(f64)>
@@ -178,13 +190,13 @@ fn MainView(
             class="grid h-screen max-h-screen overflow-hidden bg-[var(--color-bg)]"
             style=move || format!("grid-template-columns: {}px 1fr {}px;", left_width.get(), right_width.get())
         >
-            <GlacierPanel 
-                cubes=cubes 
+            <GlacierPanel
+                cubes=cubes
                 on_resize_right=on_resize_left.clone()
             />
             <Workspace />
-            <StreamPanel 
-                raw_entries=raw_entries 
+            <StreamPanel
+                raw_entries=raw_entries
                 open_settings=open_settings
                 on_resize_left=on_resize_right.clone()
             />
@@ -194,24 +206,31 @@ fn MainView(
 
 #[component]
 fn GlacierPanel(
-    cubes: RwSignal<Vec<Cube>>,
-    on_resize_right: std::rc::Rc<dyn Fn(f64) + 'static>,
+    cubes: RwSignal<Vec<Cube>>, on_resize_right: std::rc::Rc<dyn Fn(f64) + 'static>,
 ) -> impl IntoView {
     let cubes_clone = cubes.clone();
     let create_cube_action = move |_| {
         let cubes_signal = cubes_clone.clone();
         spawn_local(async move {
-            // Create a dummy paragraph cube
-            let dummy_paragraph = Paragraph {
-                text: RichText {
-                    segments: vec![RichTextSegment {
-                        text: "Dummy cube".to_string(),
-                        marks: TextMarks::default(),
-                    }],
-                },
+            // Create a dummy point cube with paragraph text
+            let dummy_point = Point {
+                id: PointId(Uuid::now_v7()),
+                tags: vec!["!Hey".to_string()],
+                created_at: Utc::now(),
+                updated_at: Utc::now(),
+                vibe: None,
+                inner: PointInner::Text(Text {
+                    style: TextStyle::Paragraph,
+                    text: RichText {
+                        segments: vec![RichTextSegment {
+                            text: "Text".to_string(),
+                            marks: TextMarks::default(),
+                        }],
+                    },
+                }),
             };
 
-            match tauri_api::create_cube(true, CubeContent::Paragraph(dummy_paragraph)).await {
+            match tauri_api::create_cube(true, CubeContent::Point(dummy_point)).await {
                 | Ok(_) => {
                     // Reload cubes
                     match tauri_api::get_all_cubes().await {
@@ -246,7 +265,7 @@ fn GlacierPanel(
             <card::CardList items=move || {
                 let cubes_data = cubes.get();
                 cubes_data.into_iter()
-                    .filter(|cube| cube.pin)
+                    .filter(|cube| cube.inner.pin)
                     .map(|cube| view! { <CubeEntry cube=cube /> }.into_any())
                     .collect::<Vec<_>>()
             } />
@@ -278,8 +297,7 @@ fn Workspace() -> impl IntoView {
 
 #[component]
 fn StreamPanel(
-    raw_entries: RwSignal<Vec<Raw>>, 
-    open_settings: impl Fn(web_sys::MouseEvent) + 'static,
+    raw_entries: RwSignal<Vec<Raw>>, open_settings: impl Fn(web_sys::MouseEvent) + 'static,
     on_resize_left: std::rc::Rc<dyn Fn(f64) + 'static>,
 ) -> impl IntoView {
     view! {
@@ -307,28 +325,12 @@ fn StreamPanel(
 
 #[component]
 fn CubeEntry(cube: Cube) -> impl IntoView {
-    let (title, created_at) = match &cube.content {
-        | CubeContent::Document(doc) => (doc.inner.title.clone(), doc.created_at),
+    let (title, created_at) = match &cube.inner.content {
+        | CubeContent::Graph(graph) => (format!("Graph"), graph.created_at),
         | CubeContent::PreOrder(po) => (format!("PreOrder"), po.created_at),
         | CubeContent::Order(order) => (format!("Order"), order.created_at),
-        | CubeContent::Paragraph(_) => (format!("Paragraph"), chrono::Utc::now()),
-        | CubeContent::Heading(heading) => {
-            let text = heading.text.segments.iter().map(|s| s.text.clone()).collect::<String>();
-            (
-                if text.is_empty() { format!("Heading H{}", heading.level) } else { text },
-                chrono::Utc::now(),
-            )
-        }
-        | CubeContent::Todo(todo) => {
-            let text = todo.text.segments.iter().map(|s| s.text.clone()).collect::<String>();
-            (if text.is_empty() { "Todo".to_string() } else { text }, chrono::Utc::now())
-        }
-        | CubeContent::Quote(quote) => {
-            let text = quote.text.segments.iter().map(|s| s.text.clone()).collect::<String>();
-            (if text.is_empty() { "Quote".to_string() } else { text }, chrono::Utc::now())
-        }
-        | CubeContent::Image(_) => (format!("Image"), chrono::Utc::now()),
-        | CubeContent::RawReference(_) => (format!("Raw Reference"), chrono::Utc::now()),
+        | CubeContent::Point(point) => (format!("Point"), point.created_at),
+        | CubeContent::Meta => (format!("Meta"), cube.created_at),
     };
     let created = created_at.format("%Y-%m-%d %H:%M").to_string();
     view! {

@@ -4,9 +4,10 @@ use crate::prelude::*;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct CubeId(pub Uuid);
 
+pub type Cube = Meta<CubeId, CubeInner>;
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Cube {
-    pub id: CubeId,
+pub struct CubeInner {
     /// Whether the cube is always shown in the short list.
     pub pin: bool,
     /// The content of the cube.
@@ -15,30 +16,20 @@ pub struct Cube {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum CubeContent {
-    Document(Document),
+    Graph(Graph),
     PreOrder(PreOrder),
     Order(Order),
-    Paragraph(Paragraph),
-    Heading(Heading),
-    Todo(Todo),
-    Quote(Quote),
-    Image(Image),
-    RawReference(RawReference),
-    // You can grow this over time:
-    // Callout {
-    //     text: RichText,
-    // },
-    // Code {
-    //     language: Option<String>,
-    //     code: String,
-    // },
+    Point(Point),
+    Meta,
 }
 
-pub type Document = Meta<CubeId, DocumentInner>;
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct GraphId(pub Uuid);
+
+pub type Graph = Meta<GraphId, GraphInner>;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct DocumentInner {
-    pub title: String,
+pub struct GraphInner {
     /// Flat list of cubes; use parent/index for structure.
     pub cubes: Vec<Cube>,
 
@@ -89,25 +80,29 @@ pub struct OrderInner {
     pub items: Vec<CubeId>,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct Paragraph {
-    pub text: RichText,
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct PointId(pub Uuid);
+
+pub type Point = Meta<PointId, PointInner>;
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum PointInner {
+    Text(Text),
+    Image(Image),
+    RawReference(RawReference),
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct Heading {
-    pub level: u8,
-    pub text: RichText,
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum TextStyle {
+    Paragraph,
+    Heading { level: u8 },
+    Todo { done: bool },
+    Quote,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct Todo {
-    pub text: RichText,
-    pub done: bool,
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct Quote {
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Text {
+    pub style: TextStyle,
     pub text: RichText,
 }
 
