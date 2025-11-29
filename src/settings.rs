@@ -46,43 +46,15 @@ fn WatchPathItem(
             </div>
             <div class="flex gap-2">
                 <button
-                    class="p-2 border-none rounded cursor-pointer text-sm font-medium transition-colors duration-200 flex items-center justify-center gap-1.5 text-white"
+                    class="p-2 border-none rounded cursor-pointer text-sm font-medium transition-colors duration-200 flex items-center justify-center gap-1.5 text-white hover:bg-[var(--color-primary-hover,#0056b3)]"
                     style="background-color: var(--color-primary, #007bff);"
-                    on:mouseenter=move |ev| {
-                        if let Some(target) = ev.target() {
-                            if let Ok(el) = target.dyn_into::<web_sys::HtmlElement>() {
-                                el.style().set_property("background-color", "var(--color-primary-hover, #0056b3)").ok();
-                            }
-                        }
-                    }
-                    on:mouseleave=move |ev| {
-                        if let Some(target) = ev.target() {
-                            if let Ok(el) = target.dyn_into::<web_sys::HtmlElement>() {
-                                el.style().set_property("background-color", "var(--color-primary, #007bff)").ok();
-                            }
-                        }
-                    }
                     on:click=move |_| on_import(path_for_import.clone())
                 >
                     <Icon icon=LuDownload width="16" height="16" />
                 </button>
                 <button
-                    class="p-2 border-none rounded cursor-pointer text-sm font-medium transition-colors duration-200 flex items-center justify-center gap-1.5 text-white"
+                    class="p-2 border-none rounded cursor-pointer text-sm font-medium transition-colors duration-200 flex items-center justify-center gap-1.5 text-white hover:bg-[var(--color-danger-hover,#c82333)]"
                     style="background-color: var(--color-danger, #dc3545);"
-                    on:mouseenter=move |ev| {
-                        if let Some(target) = ev.target() {
-                            if let Ok(el) = target.dyn_into::<web_sys::HtmlElement>() {
-                                el.style().set_property("background-color", "var(--color-danger-hover, #c82333)").ok();
-                            }
-                        }
-                    }
-                    on:mouseleave=move |ev| {
-                        if let Some(target) = ev.target() {
-                            if let Ok(el) = target.dyn_into::<web_sys::HtmlElement>() {
-                                el.style().set_property("background-color", "var(--color-danger, #dc3545)").ok();
-                            }
-                        }
-                    }
                     on:click=move |_| on_remove(path_for_remove.clone())
                 >
                     <Icon icon=LuTrash2 width="16" height="16" />
@@ -161,22 +133,8 @@ fn AddPathInput(
                 }
             />
             <button 
-                class="p-2 border-none rounded cursor-pointer text-sm font-medium transition-colors duration-200 flex items-center justify-center gap-1.5 text-white w-8 h-8 min-w-8"
+                class="p-2 border-none rounded cursor-pointer text-sm font-medium transition-colors duration-200 flex items-center justify-center gap-1.5 text-white w-8 h-8 min-w-8 hover:bg-[var(--color-primary-hover,#0056b3)]"
                 style="background-color: var(--color-primary, #007bff);"
-                on:mouseenter=move |ev| {
-                    if let Some(target) = ev.target() {
-                        if let Ok(el) = target.dyn_into::<web_sys::HtmlElement>() {
-                            el.style().set_property("background-color", "var(--color-primary-hover, #0056b3)").ok();
-                        }
-                    }
-                }
-                on:mouseleave=move |ev| {
-                    if let Some(target) = ev.target() {
-                        if let Ok(el) = target.dyn_into::<web_sys::HtmlElement>() {
-                            el.style().set_property("background-color", "var(--color-primary, #007bff)").ok();
-                        }
-                    }
-                }
                 on:click=move |_| on_add()
             >
                 <Icon icon=LuPlus width="16" height="16" />
@@ -189,22 +147,8 @@ fn AddPathInput(
 fn CloseButton(close_settings: impl Fn() + 'static) -> impl IntoView {
     view! {
         <button 
-            class="fixed top-5 left-5 p-2 text-white border-none rounded cursor-pointer text-sm font-medium transition-colors duration-200 z-[1001] flex items-center justify-center"
+            class="fixed top-5 left-5 p-2 text-white border-none rounded cursor-pointer text-sm font-medium transition-colors duration-200 z-[1001] flex items-center justify-center hover:bg-[var(--color-secondary-hover,#5a6268)]"
             style="background-color: var(--color-secondary, #6c757d);"
-            on:mouseenter=move |ev| {
-                if let Some(target) = ev.target() {
-                    if let Ok(el) = target.dyn_into::<web_sys::HtmlElement>() {
-                        el.style().set_property("background-color", "var(--color-secondary-hover, #5a6268)").ok();
-                    }
-                }
-            }
-            on:mouseleave=move |ev| {
-                if let Some(target) = ev.target() {
-                    if let Ok(el) = target.dyn_into::<web_sys::HtmlElement>() {
-                        el.style().set_property("background-color", "var(--color-secondary, #6c757d)").ok();
-                    }
-                }
-            }
             on:click=move |_| close_settings()
         >
             <Icon icon=LuX width="20" height="20" />
@@ -460,29 +404,11 @@ pub fn Settings(
                             let clearing_entries_signal = clearing_entries.clone();
                             view! {
                                 <button
-                                    class="px-5 py-2.5 text-white border-none rounded cursor-pointer text-sm font-medium transition-colors duration-200 flex items-center gap-2 disabled:cursor-not-allowed"
+                                    class="px-5 py-2.5 text-white border-none rounded cursor-pointer text-sm font-medium transition-colors duration-200 flex items-center gap-2 disabled:cursor-not-allowed hover:bg-[var(--color-danger-hover,#c82333)] disabled:hover:bg-[var(--color-text-secondary,#6c757d)]"
                                     style=move || format!(
                                         "background-color: {};",
                                         if clearing_entries_value { "var(--color-text-secondary, #6c757d)" } else { "var(--color-danger, #dc3545)" }
                                     )
-                                    on:mouseenter=move |ev| {
-                                        if !clearing_entries_value {
-                                            if let Some(target) = ev.target() {
-                                                if let Ok(el) = target.dyn_into::<web_sys::HtmlElement>() {
-                                                    el.style().set_property("background-color", "var(--color-danger-hover, #c82333)").ok();
-                                                }
-                                            }
-                                        }
-                                    }
-                                    on:mouseleave=move |ev| {
-                                        if !clearing_entries_value {
-                                            if let Some(target) = ev.target() {
-                                                if let Ok(el) = target.dyn_into::<web_sys::HtmlElement>() {
-                                                    el.style().set_property("background-color", "var(--color-danger, #dc3545)").ok();
-                                                }
-                                            }
-                                        }
-                                    }
                                     disabled=clearing_entries_value
                                     on:click=move |_| {
                                         clearing_entries_signal.set(true);
@@ -519,29 +445,11 @@ pub fn Settings(
                             let has_data = settings_storage_data.get().is_some();
                             view! {
                                 <button
-                                    class="px-5 py-2.5 text-white border-none rounded cursor-pointer text-sm font-medium transition-colors duration-200 flex items-center gap-2 disabled:cursor-not-allowed"
+                                    class="px-5 py-2.5 text-white border-none rounded cursor-pointer text-sm font-medium transition-colors duration-200 flex items-center gap-2 disabled:cursor-not-allowed hover:bg-[var(--color-danger-hover,#c82333)] disabled:hover:bg-[var(--color-text-secondary,#6c757d)]"
                                     style=move || format!(
                                         "background-color: {};",
                                         if showing_settings_storage_value { "var(--color-text-secondary, #6c757d)" } else { "var(--color-danger, #dc3545)" }
                                     )
-                                    on:mouseenter=move |ev| {
-                                        if !showing_settings_storage_value {
-                                            if let Some(target) = ev.target() {
-                                                if let Ok(el) = target.dyn_into::<web_sys::HtmlElement>() {
-                                                    el.style().set_property("background-color", "var(--color-danger-hover, #c82333)").ok();
-                                                }
-                                            }
-                                        }
-                                    }
-                                    on:mouseleave=move |ev| {
-                                        if !showing_settings_storage_value {
-                                            if let Some(target) = ev.target() {
-                                                if let Ok(el) = target.dyn_into::<web_sys::HtmlElement>() {
-                                                    el.style().set_property("background-color", "var(--color-danger, #dc3545)").ok();
-                                                }
-                                            }
-                                        }
-                                    }
                                     disabled=showing_settings_storage_value
                                     on:click=move |_| {
                                         // Toggle: if data is already shown, hide it
@@ -582,22 +490,8 @@ pub fn Settings(
                         {move || {
                             view! {
                                 <button
-                                    class="px-5 py-2.5 text-white border-none rounded cursor-pointer text-sm font-medium transition-colors duration-200 flex items-center gap-2"
+                                    class="px-5 py-2.5 text-white border-none rounded cursor-pointer text-sm font-medium transition-colors duration-200 flex items-center gap-2 hover:bg-[var(--color-danger-hover,#c82333)]"
                                     style="background-color: var(--color-danger, #dc3545);"
-                                    on:mouseenter=move |ev| {
-                                        if let Some(target) = ev.target() {
-                                            if let Ok(el) = target.dyn_into::<web_sys::HtmlElement>() {
-                                                el.style().set_property("background-color", "var(--color-danger-hover, #c82333)").ok();
-                                            }
-                                        }
-                                    }
-                                    on:mouseleave=move |ev| {
-                                        if let Some(target) = ev.target() {
-                                            if let Ok(el) = target.dyn_into::<web_sys::HtmlElement>() {
-                                                el.style().set_property("background-color", "var(--color-danger, #dc3545)").ok();
-                                            }
-                                        }
-                                    }
                                     on:click=move |_| {
                                         // Force refresh by reloading the page
                                         web_sys::window()
@@ -612,22 +506,8 @@ pub fn Settings(
                         {move || {
                             view! {
                                 <button
-                                    class="px-5 py-2.5 text-white border-none rounded cursor-pointer text-sm font-medium transition-colors duration-200 flex items-center gap-2"
+                                    class="px-5 py-2.5 text-white border-none rounded cursor-pointer text-sm font-medium transition-colors duration-200 flex items-center gap-2 hover:bg-[var(--color-danger-hover,#c82333)]"
                                     style="background-color: var(--color-danger, #dc3545);"
-                                    on:mouseenter=move |ev| {
-                                        if let Some(target) = ev.target() {
-                                            if let Ok(el) = target.dyn_into::<web_sys::HtmlElement>() {
-                                                el.style().set_property("background-color", "var(--color-danger-hover, #c82333)").ok();
-                                            }
-                                        }
-                                    }
-                                    on:mouseleave=move |ev| {
-                                        if let Some(target) = ev.target() {
-                                            if let Ok(el) = target.dyn_into::<web_sys::HtmlElement>() {
-                                                el.style().set_property("background-color", "var(--color-danger, #dc3545)").ok();
-                                            }
-                                        }
-                                    }
                                     on:click=move |_| {
                                         spawn_local(async move {
                                             match tauri_api::reveal_data_folder().await {
@@ -653,22 +533,8 @@ pub fn Settings(
                         {move || {
                             view! {
                                 <button
-                                    class="px-5 py-2.5 text-white border-none rounded cursor-pointer text-sm font-medium transition-colors duration-200 flex items-center gap-2"
+                                    class="px-5 py-2.5 text-white border-none rounded cursor-pointer text-sm font-medium transition-colors duration-200 flex items-center gap-2 hover:bg-[var(--color-danger-hover,#c82333)]"
                                     style="background-color: var(--color-danger, #dc3545);"
-                                    on:mouseenter=move |ev| {
-                                        if let Some(target) = ev.target() {
-                                            if let Ok(el) = target.dyn_into::<web_sys::HtmlElement>() {
-                                                el.style().set_property("background-color", "var(--color-danger-hover, #c82333)").ok();
-                                            }
-                                        }
-                                    }
-                                    on:mouseleave=move |ev| {
-                                        if let Some(target) = ev.target() {
-                                            if let Ok(el) = target.dyn_into::<web_sys::HtmlElement>() {
-                                                el.style().set_property("background-color", "var(--color-danger, #dc3545)").ok();
-                                            }
-                                        }
-                                    }
                                     on:click=move |_| {
                                         spawn_local(async move {
                                             if let Err(e) = tauri_api::toggle_devtools().await {
