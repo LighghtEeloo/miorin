@@ -7,7 +7,7 @@ use crate::ui::{
 use crate::tauri_api;
 use leptos::prelude::*;
 use leptos_icons::Icon;
-use icondata::{LuPlus, LuSettings};
+use icondata::{LuPlus, LuSettings, LuTrash2};
 use miorin_core::prelude::*;
 use wasm_bindgen_futures::spawn_local;
 use wasm_bindgen::JsCast;
@@ -294,7 +294,7 @@ fn GlacierPanel(
                 );
                 filtered
                     .into_iter()
-                    .map(|cube| view! { <CubeEntry cube=cube /> }.into_any())
+                    .map(|cube| view! { <CubeEntry cube=cube cubes=cubes.clone() /> }.into_any())
                     .collect::<Vec<_>>()
             } />
         </panel::Panel>
@@ -352,7 +352,7 @@ fn StreamPanel(
 }
 
 #[component]
-fn CubeEntry(cube: Cube) -> impl IntoView {
+fn CubeEntry(cube: Cube, cubes: RwSignal<Vec<Cube>>) -> impl IntoView {
     let title = match &cube.inner.content {
         | CubeContent::Graph(_) => "Graph".to_string(),
         | CubeContent::PreOrder(_) => "PreOrder".to_string(),
@@ -361,12 +361,59 @@ fn CubeEntry(cube: Cube) -> impl IntoView {
         | CubeContent::Meta => "Meta".to_string(),
     };
     let created = cube.created_at.format("%Y-%m-%d %H:%M").to_string();
+    let cube_id = cube.id.0.to_string();
+    
+    let delete_action = {
+        let cubes_signal = cubes.clone();
+        let cube_id_clone = cube_id.clone();
+        move |e: web_sys::MouseEvent| {
+            e.stop_propagation();
+            let cubes_signal = cubes_signal.clone();
+            let cube_id = cube_id_clone.clone();
+            spawn_local(async move {
+                web_sys::console::log_1(&format!("Deleting cube with id: {}", cube_id).into());
+                match tauri_api::delete_cube(cube_id).await {
+                    | Ok(_) => {
+                        web_sys::console::log_1(&"Cube deleted successfully".into());
+                        // Reload cubes
+                        match tauri_api::get_all_cubes().await {
+                            | Ok(cubes_data) => {
+                                web_sys::console::log_1(
+                                    &format!("Reloaded {} cubes", cubes_data.len()).into(),
+                                );
+                                cubes_signal.set(cubes_data);
+                            }
+                            | Err(e) => {
+                                web_sys::console::error_1(
+                                    &format!("Failed to reload cubes: {}", e).into(),
+                                );
+                            }
+                        }
+                    }
+                    | Err(e) => {
+                        web_sys::console::error_1(&format!("Failed to delete cube: {}", e).into());
+                    }
+                }
+            });
+        }
+    };
+    
     view! {
         <div
-            class="p-3 border rounded cursor-pointer transition-colors duration-200 hover-bg-panel border-[var(--color-border)] bg-[var(--color-panel-bg)]"
+            class="p-3 border rounded cursor-pointer transition-colors duration-200 hover-bg-panel border-[var(--color-border)] bg-[var(--color-panel-bg)] relative group"
         >
-            <div class="font-medium mb-1 text-[var(--color-text)]">{title}</div>
-            <div class="text-xs mt-1 text-[var(--color-text-secondary)]">{created}</div>
+            <div class="flex items-start justify-between gap-2">
+                <div class="flex-1">
+                    <div class="font-medium mb-1 text-[var(--color-text)]">{title}</div>
+                    <div class="text-xs mt-1 text-[var(--color-text-secondary)]">{created}</div>
+                </div>
+                <button::ActionButton
+                    icon=view! { <Icon icon=LuTrash2 width="12" height="12" /> }
+                    color_variant=ColorVariant::Danger
+                    on_click=delete_action
+                    class="opacity-0 group-hover:opacity-100 transition-opacity duration-200 shrink-0"
+                />
+            </div>
         </div>
     }
 }
