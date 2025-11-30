@@ -270,6 +270,79 @@ pub(crate) async fn find_duplicate_raw_entry(
     Ok(None)
 }
 
+/// Get the last raw entry from clipboard source
+pub(crate) async fn get_last_clipboard_entry(
+    pool: &SqlitePool,
+) -> Result<Option<Raw>, String> {
+    let source_json = serde_json::to_string(&RawSource::Clipboard { application: None })
+        .map_err(|e| format!("Failed to serialize clipboard source: {}", e))?;
+
+    let row = sqlx::query(
+        "SELECT id, tags_json, created_at, updated_at, vibe_json, source_json, content_json 
+         FROM raw_entries 
+         WHERE source_json = ? 
+         ORDER BY created_at DESC 
+         LIMIT 1",
+    )
+    .bind(&source_json)
+    .fetch_optional(pool)
+    .await
+    .map_err(|e| format!("Query error: {}", e))?;
+
+    if let Some(row) = row {
+        let id_str: String = row.get("id");
+        let id = RawId(
+            uuid::Uuid::parse_str(&id_str).map_err(|e| format!("Invalid UUID: {}", e))?,
+        );
+
+        let tags_json: String = row.get("tags_json");
+        let tags: Vec<String> = serde_json::from_str(&tags_json)
+            .map_err(|e| format!("Failed to parse tags: {}", e))?;
+
+        let created_at_str: String = row.get("created_at");
+        let created_at: DateTime<Utc> = serde_json::from_str(&created_at_str)
+            .map_err(|e| format!("Failed to parse created_at: {}", e))?;
+
+        let updated_at_str: String = row.get("updated_at");
+        let updated_at: DateTime<Utc> = serde_json::from_str(&updated_at_str)
+            .map_err(|e| format!("Failed to parse updated_at: {}", e))?;
+
+        let vibe: Option<Vibe> = if let Some(vibe_json) =
+            row.try_get::<Option<String>, _>("vibe_json").ok().flatten()
+        {
+            if vibe_json == "null" || vibe_json.is_empty() {
+                None
+            } else {
+                Some(
+                    serde_json::from_str(&vibe_json)
+                        .map_err(|e| format!("Failed to parse vibe: {}", e))?,
+                )
+            }
+        } else {
+            None
+        };
+
+        let source_json: String = row.get("source_json");
+        let source: RawSource = serde_json::from_str(&source_json)
+            .map_err(|e| format!("Failed to parse source: {}", e))?;
+
+        let content_json: String = row.get("content_json");
+        let content: RawContent = serde_json::from_str(&content_json)
+            .map_err(|e| format!("Failed to parse content: {}", e))?;
+
+        return Ok(Some(Raw {
+            id,
+            tags,
+            created_at,
+            updated_at,
+            vibe,
+            inner: RawInner { source, content },
+        }));
+    }
+
+    Ok(None)
+}
+
 /// Create a new raw entry
 #[tauri::command]
 pub async fn create_raw_entry(

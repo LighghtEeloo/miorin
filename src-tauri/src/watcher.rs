@@ -356,7 +356,6 @@ pub async fn start_clipboard_watcher(app: AppHandle) -> Result<(), String> {
 
     let app_clone = app.clone();
     tauri::async_runtime::spawn(async move {
-        let mut last_hash: Option<u64> = None;
         let mut clipboard = match arboard::Clipboard::new() {
             Ok(clip) => clip,
             Err(e) => {
@@ -364,6 +363,27 @@ pub async fn start_clipboard_watcher(app: AppHandle) -> Result<(), String> {
                 return;
             }
         };
+
+        // Read clipboard on start and process if it meets criteria (size < 1MB and different from last entry)
+        let initial_hash = match get_clipboard_hash(&mut clipboard).await {
+            Ok(Some(hash)) => {
+                tracing::debug!("Reading clipboard on start, will process if it meets criteria");
+                // Process initial clipboard content
+                if let Err(e) = handle_clipboard_event(&app_clone, &mut clipboard).await {
+                    tracing::debug!("Failed to process initial clipboard content: {}", e);
+                }
+                Some(hash)
+            }
+            Ok(None) => {
+                tracing::debug!("Clipboard is empty on start");
+                None
+            }
+            Err(e) => {
+                tracing::debug!("Error reading clipboard on start: {}, will continue monitoring", e);
+                None
+            }
+        };
+        let mut last_hash = initial_hash;
 
         loop {
             // Poll clipboard every 500ms
@@ -450,20 +470,24 @@ async fn handle_clipboard_event(
         .map_err(|e| format!("Failed to serialize timestamp: {}", e))?;
 
     // Check for duplicate before processing
-    use crate::db::find_duplicate_raw_entry;
-    use crate::db::get_db_pool;
+    use crate::db::{get_last_clipboard_entry, get_db_pool};
     let pool = get_db_pool(app).await.map_err(|e| format!("Failed to get database pool: {}", e))?;
 
     // Try to get text first
     let content = match clipboard.get_text() {
         Ok(text) => {
-            // Check for duplicate text entry
-            let source = RawSource::Clipboard { application: None };
-            if let Some(existing) = find_duplicate_raw_entry(&pool, &source, &now).await? {
-                // Check if content matches
-                if let RawContent::Text(TextRaw { content: existing_content, .. }) = &existing.inner.content {
-                    if existing_content == &text {
-                        tracing::debug!("Clipboard text entry already exists, skipping");
+            // Check size limit (1MB = 1,048,576 bytes)
+            const MAX_SIZE: usize = 1_048_576;
+            if text.len() > MAX_SIZE {
+                tracing::debug!(size = text.len(), "Clipboard text too large, skipping");
+                return Ok(());
+            }
+
+            // Check if content matches the last clipboard entry
+            if let Some(last_entry) = get_last_clipboard_entry(&pool).await? {
+                if let RawContent::Text(TextRaw { content: last_content, .. }) = &last_entry.inner.content {
+                    if last_content == &text {
+                        tracing::debug!("Clipboard text matches last entry, skipping");
                         return Ok(());
                     }
                 }
@@ -480,12 +504,39 @@ async fn handle_clipboard_event(
             // Text not available, try image
             match clipboard.get_image() {
                 Ok(img) => {
-                    // Check for duplicate image entry
-                    let source = RawSource::Clipboard { application: None };
-                    if let Some(_existing) = find_duplicate_raw_entry(&pool, &source, &now).await? {
-                        // For images, we'll create a new entry even if it's a duplicate
-                        // since we can't easily compare image content
-                        tracing::debug!("Clipboard image entry may be duplicate, but creating anyway");
+                    // Check size limit (1MB = 1,048,576 bytes)
+                    // Estimate size: width * height * 4 bytes (RGBA) + some overhead
+                    const MAX_SIZE: usize = 1_048_576;
+                    let estimated_size = (img.width as usize) * (img.height as usize) * 4;
+                    if estimated_size > MAX_SIZE {
+                        tracing::debug!(estimated_size = estimated_size, "Clipboard image too large, skipping");
+                        return Ok(());
+                    }
+
+                    // Check if image matches the last clipboard entry (compare dimensions and hash)
+                    if let Some(last_entry) = get_last_clipboard_entry(&pool).await? {
+                        if let RawContent::Image(ImageRaw { width: last_width, height: last_height, blob_id: last_blob_id, .. }) = &last_entry.inner.content {
+                            // Compare dimensions first (quick check)
+                            if last_width == &(img.width as u32) && last_height == &(img.height as u32) {
+                                // Dimensions match, compare image hash
+                                let mut hasher = DefaultHasher::new();
+                                img.bytes.hash(&mut hasher);
+                                let current_hash = hasher.finish();
+                                
+                                // Get the last image blob and compare
+                                use crate::blob::get_blob_data;
+                                if let Ok(last_image_data) = get_blob_data(app, *last_blob_id).await {
+                                    let mut last_hasher = DefaultHasher::new();
+                                    last_image_data.hash(&mut last_hasher);
+                                    let last_hash = last_hasher.finish();
+                                    
+                                    if current_hash == last_hash {
+                                        tracing::debug!("Clipboard image matches last entry, skipping");
+                                        return Ok(());
+                                    }
+                                }
+                            }
+                        }
                     }
 
                     // Store the image blob
