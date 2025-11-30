@@ -203,8 +203,16 @@ pub fn run() {
             // Start file watcher for configured path
             let app_handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {
-                if let Err(e) = start_file_watcher(app_handle).await {
+                if let Err(e) = start_file_watcher(app_handle.clone()).await {
                     tracing::error!("Failed to start file watcher: {}", e);
+                }
+            });
+
+            // Start clipboard watcher
+            let app_handle = app.handle().clone();
+            tauri::async_runtime::spawn(async move {
+                if let Err(e) = start_clipboard_watcher(app_handle).await {
+                    tracing::error!("Failed to start clipboard watcher: {}", e);
                 }
             });
             Ok(())

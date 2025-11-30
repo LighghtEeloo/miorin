@@ -6,7 +6,9 @@ use tracing;
 use std::sync::Arc;
 use tokio::sync::mpsc;
 use crate::db::create_raw_entry;
-use crate::blob::{store_blob_from_file, generate_thumbnail};
+use crate::blob::{store_blob_from_file, generate_thumbnail, store_blob_data};
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
 
 /// Start watching the configured directories
 pub async fn start_file_watcher(app: AppHandle) -> Result<(), String> {
@@ -346,4 +348,246 @@ pub fn infer_mime_type(path: &Path) -> Option<String> {
             }
         })
         .map(|s| s.to_string())
+}
+
+/// Start monitoring clipboard for changes
+pub async fn start_clipboard_watcher(app: AppHandle) -> Result<(), String> {
+    tracing::info!("Starting clipboard watcher");
+
+    let app_clone = app.clone();
+    tauri::async_runtime::spawn(async move {
+        let mut last_hash: Option<u64> = None;
+        let mut clipboard = match arboard::Clipboard::new() {
+            Ok(clip) => clip,
+            Err(e) => {
+                tracing::error!("Failed to initialize clipboard in spawn: {}", e);
+                return;
+            }
+        };
+
+        loop {
+            // Poll clipboard every 500ms
+            tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+
+            // Calculate hash of current clipboard content
+            let current_hash = match get_clipboard_hash(&mut clipboard).await {
+                Ok(Some(hash)) => hash,
+                Ok(None) => {
+                    // Clipboard is empty or error reading, skip
+                    continue;
+                }
+                Err(e) => {
+                    tracing::debug!("Error reading clipboard: {}", e);
+                    continue;
+                }
+            };
+
+            // Check if clipboard content has changed
+            if let Some(last) = last_hash {
+                if current_hash == last {
+                    // No change, continue
+                    continue;
+                }
+            }
+
+            // Clipboard content has changed, process it
+            last_hash = Some(current_hash);
+            
+            if let Err(e) = handle_clipboard_event(&app_clone, &mut clipboard).await {
+                tracing::error!(error = %e, "Failed to handle clipboard event");
+            }
+        }
+    });
+
+    Ok(())
+}
+
+/// Get a hash of the current clipboard content to detect changes
+async fn get_clipboard_hash(clipboard: &mut arboard::Clipboard) -> Result<Option<u64>, String> {
+    // Try to get text first
+    match clipboard.get_text() {
+        Ok(text) => {
+            let mut hasher = DefaultHasher::new();
+            text.hash(&mut hasher);
+            return Ok(Some(hasher.finish()));
+        }
+        Err(arboard::Error::ContentNotAvailable) => {
+            // Text not available, try image
+        }
+        Err(e) => {
+            return Err(format!("Failed to get clipboard text: {}", e));
+        }
+    }
+
+    // Try to get image
+    match clipboard.get_image() {
+        Ok(img) => {
+            let mut hasher = DefaultHasher::new();
+            img.bytes.hash(&mut hasher);
+            img.width.hash(&mut hasher);
+            img.height.hash(&mut hasher);
+            return Ok(Some(hasher.finish()));
+        }
+        Err(arboard::Error::ContentNotAvailable) => {
+            // Neither text nor image available
+            return Ok(None);
+        }
+        Err(e) => {
+            return Err(format!("Failed to get clipboard image: {}", e));
+        }
+    }
+}
+
+/// Handle a clipboard change event by creating a Raw entry
+async fn handle_clipboard_event(
+    app: &AppHandle,
+    clipboard: &mut arboard::Clipboard,
+) -> Result<(), String> {
+    tracing::info!("Handling clipboard event");
+
+    let now = chrono::Utc::now();
+    let created_at_str = serde_json::to_string(&now)
+        .map_err(|e| format!("Failed to serialize timestamp: {}", e))?;
+
+    // Check for duplicate before processing
+    use crate::db::find_duplicate_raw_entry;
+    use crate::db::get_db_pool;
+    let pool = get_db_pool(app).await.map_err(|e| format!("Failed to get database pool: {}", e))?;
+
+    // Try to get text first
+    let content = match clipboard.get_text() {
+        Ok(text) => {
+            // Check for duplicate text entry
+            let source = RawSource::Clipboard { application: None };
+            if let Some(existing) = find_duplicate_raw_entry(&pool, &source, &now).await? {
+                // Check if content matches
+                if let RawContent::Text(TextRaw { content: existing_content, .. }) = &existing.inner.content {
+                    if existing_content == &text {
+                        tracing::debug!("Clipboard text entry already exists, skipping");
+                        return Ok(());
+                    }
+                }
+            }
+
+            // Create text content
+            RawContent::Text(TextRaw {
+                content: text,
+                mime_type: Some("text/plain".to_string()),
+                language: None,
+            })
+        }
+        Err(arboard::Error::ContentNotAvailable) => {
+            // Text not available, try image
+            match clipboard.get_image() {
+                Ok(img) => {
+                    // Check for duplicate image entry
+                    let source = RawSource::Clipboard { application: None };
+                    if let Some(_existing) = find_duplicate_raw_entry(&pool, &source, &now).await? {
+                        // For images, we'll create a new entry even if it's a duplicate
+                        // since we can't easily compare image content
+                        tracing::debug!("Clipboard image entry may be duplicate, but creating anyway");
+                    }
+
+                    // Store the image blob
+                    let blob_id = BlobId(uuid::Uuid::now_v7());
+                    
+                    // arboard gives us RGBA bytes, convert to image::RgbaImage
+                    let rgba_image = image::RgbaImage::from_raw(
+                        img.width as u32,
+                        img.height as u32,
+                        img.bytes.to_vec(),
+                    )
+                    .ok_or_else(|| format!("Failed to create image from clipboard data: invalid dimensions or data"))?;
+
+                    // Convert to DynamicImage and save as PNG
+                    let dynamic_img = image::DynamicImage::ImageRgba8(rgba_image);
+                    let mut png_data = Vec::new();
+                    {
+                        let mut cursor = std::io::Cursor::new(&mut png_data);
+                        dynamic_img.write_to(&mut cursor, image::ImageFormat::Png)
+                            .map_err(|e| format!("Failed to encode PNG: {}", e))?;
+                    }
+
+                    let image_data = png_data;
+                    let format = "png";
+
+                    store_blob_data(app, blob_id, image_data).await?;
+
+                    // Generate thumbnail
+                    let thumbnail_blob_id = match generate_thumbnail(app, blob_id, 200).await {
+                        Ok((thumb_id, _)) => {
+                            tracing::debug!(thumbnail_blob_id = %thumb_id.0, "Generated thumbnail");
+                            Some(thumb_id)
+                        }
+                        Err(e) => {
+                            tracing::warn!(error = %e, "Failed to generate thumbnail, continuing without it");
+                            None
+                        }
+                    };
+
+                    // Compute dominant color (sample center pixel)
+                    let dominant_color_rgb = if img.width > 0 && img.height > 0 {
+                        let center_idx = ((img.height / 2) * img.width + (img.width / 2)) * 4;
+                        if center_idx + 3 < img.bytes.len() {
+                            Some([
+                                img.bytes[center_idx],
+                                img.bytes[center_idx + 1],
+                                img.bytes[center_idx + 2],
+                            ])
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    };
+
+                    RawContent::Image(ImageRaw {
+                        blob_id,
+                        width: img.width as u32,
+                        height: img.height as u32,
+                        format: Some(format.to_string()),
+                        thumbnail_blob_id,
+                        dominant_color_rgb,
+                    })
+                }
+                Err(arboard::Error::ContentNotAvailable) => {
+                    tracing::debug!("Clipboard is empty, skipping");
+                    return Ok(());
+                }
+                Err(e) => {
+                    return Err(format!("Failed to get clipboard image: {}", e));
+                }
+            }
+        }
+        Err(e) => {
+            return Err(format!("Failed to get clipboard text: {}", e));
+        }
+    };
+
+    // Create Raw entry
+    let inner = RawInner {
+        source: RawSource::Clipboard { application: None },
+        content,
+    };
+
+    // Save to database
+    let raw = create_raw_entry(
+        app.clone(),
+        inner,
+        Some(created_at_str.clone()),
+        Some(created_at_str),
+    )
+    .await?;
+
+    tracing::info!("Created raw entry from clipboard");
+
+    // Emit event to notify frontend that a new raw entry was created
+    use tauri::{Manager, Emitter};
+    for window in app.webview_windows().values() {
+        if let Err(e) = window.emit("raw-entry-created", &raw) {
+            tracing::warn!("Failed to emit raw-entry-created event to window: {}", e);
+        }
+    }
+
+    Ok(())
 }
