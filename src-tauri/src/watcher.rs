@@ -201,10 +201,20 @@ async fn handle_file_event(app: &AppHandle, file_path: &Path) -> Result<(), Stri
     };
 
     // Save to database with file timestamps
-    create_raw_entry(app.clone(), inner, Some(created_at_str.clone()), Some(created_at_str))
+    let raw = create_raw_entry(app.clone(), inner, Some(created_at_str.clone()), Some(created_at_str))
         .await?;
 
     tracing::info!(file_path = ?file_path, "Created raw entry from file");
+
+    // Emit event to notify frontend that a new raw entry was created
+    use tauri::{Manager, Emitter};
+    // Get all windows and emit to them
+    for window in app.webview_windows().values() {
+        if let Err(e) = window.emit("raw-entry-created", &raw) {
+            tracing::warn!("Failed to emit raw-entry-created event to window: {}", e);
+        }
+    }
+
     Ok(())
 }
 

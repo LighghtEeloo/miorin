@@ -18,7 +18,7 @@ use std::cell::RefCell;
 pub fn App() -> impl IntoView {
     // Load raw entries from database
     let raw_entries = RwSignal::new(Vec::<Raw>::new());
-    let raw_entries = raw_entries.clone();
+    let raw_entries_for_load = raw_entries.clone();
     spawn_local(async move {
         web_sys::console::log_1(&"Starting to load raw entries from database...".into());
         match tauri_api::get_all_raw_entries().await {
@@ -26,13 +26,40 @@ pub fn App() -> impl IntoView {
                 web_sys::console::log_1(
                     &format!("Successfully loaded {} raw entries", entries.len()).into(),
                 );
-                raw_entries.set(entries);
+                raw_entries_for_load.set(entries);
             }
             | Err(e) => {
                 web_sys::console::error_1(&format!("Failed to load raw entries: {}", e).into());
             }
         }
         web_sys::console::log_1(&"Finished loading raw entries".into());
+    });
+
+    // Listen for raw-entry-created events to refresh the stream panel
+    let raw_entries_for_event = raw_entries.clone();
+    spawn_local(async move {
+        if let Err(e) = tauri_api::listen_to_event("raw-entry-created", move |_event| {
+            web_sys::console::log_1(&"Received raw-entry-created event".into());
+            let raw_entries = raw_entries_for_event.clone();
+            spawn_local(async move {
+                web_sys::console::log_1(&"Refreshing raw entries after new entry created...".into());
+                match tauri_api::get_all_raw_entries().await {
+                    | Ok(entries) => {
+                        web_sys::console::log_1(
+                            &format!("Refreshed raw entries, now have {} entries", entries.len()).into(),
+                        );
+                        raw_entries.set(entries);
+                    }
+                    | Err(e) => {
+                        web_sys::console::error_1(&format!("Failed to refresh raw entries: {}", e).into());
+                    }
+                }
+            });
+        }) {
+            web_sys::console::error_1(&format!("Failed to listen to raw-entry-created event: {}", e).into());
+        } else {
+            web_sys::console::log_1(&"Successfully set up listener for raw-entry-created event".into());
+        }
     });
 
     // Load cubes from database

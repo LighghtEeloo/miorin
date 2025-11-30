@@ -297,3 +297,37 @@ pub async fn get_panel_right_width() -> Result<f64, String> {
 pub async fn set_panel_right_width(width: f64) -> Result<(), String> {
     invoke_tauri("set_panel_right_width_cmd", serde_json::json!({ "width": width })).await
 }
+
+/// Listen to a Tauri event
+/// Returns a closure that can be used to unlisten (forget it to keep listening)
+pub fn listen_to_event<F>(event_name: &str, callback: F) -> Result<(), String>
+where
+    F: Fn(JsValue) + 'static,
+{
+    let window = web_sys::window().ok_or("Window not available")?;
+    let tauri = js_sys::Reflect::get(&window, &JsValue::from_str("__TAURI__"))
+        .map_err(|_| "Tauri API not available")?;
+    
+    let event = js_sys::Reflect::get(&tauri, &JsValue::from_str("event"))
+        .map_err(|_| "Tauri event API not available")?;
+    
+    let listen_fn = js_sys::Reflect::get(&event, &JsValue::from_str("listen"))
+        .map_err(|_| "Tauri event.listen function not available")?;
+    
+    let event_name_js = JsValue::from_str(event_name);
+    
+    // Wrap the callback in a Closure
+    let closure = wasm_bindgen::closure::Closure::wrap(Box::new(move |event: JsValue| {
+        callback(event);
+    }) as Box<dyn FnMut(JsValue)>);
+    
+    // Call listen(event_name, handler)
+    js_sys::Function::from(listen_fn)
+        .call2(&event, &event_name_js, closure.as_ref().unchecked_ref())
+        .map_err(|e| format!("Failed to listen to event: {:?}", e))?;
+    
+    // Forget the closure so it stays alive
+    closure.forget();
+    
+    Ok(())
+}
