@@ -1,11 +1,13 @@
 use crate::tauri_api;
 use crate::ui::{button, color::ColorVariant, toggle};
 use leptos::prelude::*;
+use leptos::ev::keydown;
 use leptos_icons::Icon;
+use leptos_use::{use_document, use_event_listener};
 use icondata::{LuDownload, LuEye, LuEyeOff, LuFolderOpen, LuPlus, LuRefreshCw, LuTrash2, LuX};
 use wasm_bindgen_futures::spawn_local;
-use wasm_bindgen::{JsCast, closure::Closure};
-use std::rc::Rc;
+use wasm_bindgen::JsCast;
+use web_sys::KeyboardEvent;
 
 
 #[component]
@@ -170,7 +172,7 @@ fn CloseButton(close_settings: impl Fn() + 'static) -> impl IntoView {
 
 #[component]
 pub fn Settings(
-    close_settings: impl Fn() + 'static,
+    close_settings: impl Fn() + Clone + 'static,
     raw_entries_signal: RwSignal<Vec<miorin_core::prelude::Raw>>,
 ) -> impl IntoView {
 
@@ -195,27 +197,13 @@ pub fn Settings(
     let settings_storage_data = RwSignal::new(Option::<String>::None);
 
     // Listen for ESC key to close settings
-    // Box the closure so we can store it and use it in multiple places
-    let close_settings_boxed: Rc<dyn Fn()> = Rc::new(move || close_settings());
-    {
-        let close_settings = close_settings_boxed.clone();
-        spawn_local(async move {
-            let handler = Closure::wrap(Box::new(move |ev: web_sys::KeyboardEvent| {
-                if ev.key_code() == 27 {
-                    // ESC key pressed
-                    close_settings();
-                }
-            }) as Box<dyn FnMut(_)>);
-            
-            let window = web_sys::window().unwrap();
-            let document = window.document().unwrap();
-            document.add_event_listener_with_callback(
-                "keydown",
-                handler.as_ref().unchecked_ref()
-            ).unwrap();
-            handler.forget();
-        });
-    }
+    let close_settings_for_listener = close_settings.clone();
+    let _ = use_event_listener(use_document(), keydown, move |ev: KeyboardEvent| {
+        if ev.key_code() == 27 {
+            // ESC key pressed
+            close_settings_for_listener();
+        }
+    });
 
     // Load settings on mount
     spawn_local({
@@ -389,7 +377,7 @@ pub fn Settings(
         <div 
             class="fixed top-0 left-0 right-0 bottom-0 w-full h-screen overflow-y-auto z-[1000] bg-[var(--color-bg)]"
         >
-            <CloseButton close_settings=move || close_settings_boxed() />
+            <CloseButton close_settings=close_settings />
             <div 
                 class="pt-[60px] px-5 pb-5 max-w-[800px] mx-auto bg-[var(--color-bg)] text-[var(--color-text)] font-[system-ui,-apple-system,sans-serif]"
             >

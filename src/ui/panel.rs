@@ -1,8 +1,9 @@
 use leptos::prelude::*;
-use wasm_bindgen::{JsCast, closure::Closure};
+use leptos::ev::{mousemove, mouseup};
+use leptos_use::{use_document, use_event_listener};
+use wasm_bindgen::JsCast;
 use web_sys::MouseEvent;
 use std::rc::Rc;
-use std::cell::RefCell;
 
 #[component]
 pub fn Panel(
@@ -24,11 +25,50 @@ pub fn Panel(
     let show_left_resizer = resizable_left.unwrap_or(false);
     let show_right_resizer = resizable_right.unwrap_or(false);
 
+    // State for tracking resize operations (start_x, start_width, is_left)
+    let resize_state = RwSignal::new(Option::<(f64, f64, bool)>::None);
+    let left_callback = on_resize_left.clone();
+    let right_callback = on_resize_right.clone();
+    
+    // Document-level mousemove handler for resizing
+    {
+        let resize_state = resize_state.clone();
+        let left_callback = left_callback.clone();
+        let right_callback = right_callback.clone();
+        let _ = use_event_listener(use_document(), mousemove, move |e: MouseEvent| {
+            if let Some((start_x, start_width, is_left)) = resize_state.get() {
+                let delta_x = if is_left {
+                    start_x - e.client_x() as f64
+                } else {
+                    e.client_x() as f64 - start_x
+                };
+                let new_width = (start_width + delta_x).max(100.0);
+                if is_left {
+                    if let Some(ref callback) = left_callback {
+                        callback(new_width);
+                    }
+                } else {
+                    if let Some(ref callback) = right_callback {
+                        callback(new_width);
+                    }
+                }
+            }
+        });
+    }
+    
+    // Document-level mouseup handler to stop resizing
+    {
+        let resize_state = resize_state.clone();
+        let _ = use_event_listener(use_document(), mouseup, move |_e: MouseEvent| {
+            resize_state.set(None);
+        });
+    }
+
     // Helper function to create resizer handler
     fn create_resizer_handler(
-        on_resize: Option<Rc<dyn Fn(f64)>>,
         node_ref: NodeRef<leptos::html::Div>,
         is_left: bool,
+        resize_state: RwSignal<Option<(f64, f64, bool)>>,
     ) -> impl Fn(MouseEvent) + 'static {
         move |e: MouseEvent| {
             e.prevent_default();
@@ -48,53 +88,14 @@ pub fn Panel(
                 .and_then(|w| w.as_f64())
                 .unwrap_or(250.0);
 
-            let on_resize_opt = on_resize.as_ref().map(|cb| cb.clone());
-            let on_mousemove = Closure::wrap(Box::new({
-                let start_x = start_x;
-                let start_width = start_width;
-                let on_resize_opt = on_resize_opt.clone();
-                move |e: MouseEvent| {
-                    let delta_x = if is_left {
-                        start_x - e.client_x() as f64
-                    } else {
-                        e.client_x() as f64 - start_x
-                    };
-                    let new_width = (start_width + delta_x).max(100.0);
-                    if let Some(ref callback) = on_resize_opt {
-                        callback(new_width);
-                    }
-                }
-            }) as Box<dyn FnMut(_)>);
-
-            let cleanup_state = Rc::new(RefCell::new(Some(on_mousemove)));
-            let cleanup_state_clone = cleanup_state.clone();
-            
-            let on_mouseup = Closure::wrap(Box::new(move |_e: MouseEvent| {
-                let document = web_sys::window()
-                    .and_then(|w| w.document())
-                    .expect("should have document");
-                let mut state = cleanup_state.borrow_mut();
-                if let Some(ref on_mousemove) = *state {
-                    document.remove_event_listener_with_callback("mousemove", on_mousemove.as_ref().unchecked_ref()).ok();
-                }
-                *state = None;
-            }) as Box<dyn FnMut(_)>);
-
-            let document = web_sys::window()
-                .and_then(|w| w.document())
-                .expect("should have document");
-            if let Some(ref on_mousemove) = *cleanup_state_clone.borrow() {
-                document.add_event_listener_with_callback("mousemove", on_mousemove.as_ref().unchecked_ref()).ok();
-            }
-            document.add_event_listener_with_callback("mouseup", on_mouseup.as_ref().unchecked_ref()).ok();
-            on_mouseup.forget();
+            resize_state.set(Some((start_x, start_width, is_left)));
         }
     }
 
     // Left resizer handler
     let left_resizer_node_ref = NodeRef::<leptos::html::Div>::new();
     let left_resizer_on_mousedown = if show_left_resizer {
-        Some(create_resizer_handler(on_resize_left.clone(), left_resizer_node_ref.clone(), true))
+        Some(create_resizer_handler(left_resizer_node_ref.clone(), true, resize_state.clone()))
     } else {
         None
     };
@@ -102,7 +103,7 @@ pub fn Panel(
     // Right resizer handler
     let right_resizer_node_ref = NodeRef::<leptos::html::Div>::new();
     let right_resizer_on_mousedown = if show_right_resizer {
-        Some(create_resizer_handler(on_resize_right.clone(), right_resizer_node_ref.clone(), false))
+        Some(create_resizer_handler(right_resizer_node_ref.clone(), false, resize_state.clone()))
     } else {
         None
     };

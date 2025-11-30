@@ -7,12 +7,10 @@ use crate::ui::{
 use crate::tauri_api;
 use leptos::prelude::*;
 use leptos_icons::Icon;
+use leptos_use::use_debounce_fn_with_arg;
 use icondata::{LuPlus, LuSettings, LuTrash2};
 use miorin_core::prelude::*;
 use wasm_bindgen_futures::spawn_local;
-use wasm_bindgen::JsCast;
-use std::rc::Rc;
-use std::cell::RefCell;
 
 #[component]
 pub fn App() -> impl IntoView {
@@ -143,77 +141,45 @@ fn MainView(
     open_settings: impl Fn(web_sys::MouseEvent) + 'static, left_width: RwSignal<f64>,
     right_width: RwSignal<f64>,
 ) -> impl IntoView {
-    // Debounce save timers
-    let left_save_timeout = Rc::new(RefCell::new(None::<i32>));
-    let right_save_timeout = Rc::new(RefCell::new(None::<i32>));
+    // Debounced save function for left panel width
+    let save_left_width = move |width: f64| {
+        spawn_local(async move {
+            if let Err(e) = tauri_api::set_panel_left_width(width).await {
+                web_sys::console::error_1(
+                    &format!("Failed to save left panel width: {}", e).into(),
+                );
+            }
+        });
+    };
+    let debounced_save_left = use_debounce_fn_with_arg(save_left_width, 500.0);
+
+    // Debounced save function for right panel width
+    let save_right_width = move |width: f64| {
+        spawn_local(async move {
+            if let Err(e) = tauri_api::set_panel_right_width(width).await {
+                web_sys::console::error_1(
+                    &format!("Failed to save right panel width: {}", e).into(),
+                );
+            }
+        });
+    };
+    let debounced_save_right = use_debounce_fn_with_arg(save_right_width, 500.0);
 
     let on_resize_left = {
         let left_width = left_width.clone();
-        let save_timeout_clone = left_save_timeout.clone();
+        let debounced_save_left = debounced_save_left.clone();
         std::rc::Rc::new(move |new_width: f64| {
             left_width.set(new_width);
-            // Debounce saves - clear existing timeout and set a new one
-            if let Some(timeout_id) = save_timeout_clone.borrow_mut().take() {
-                let window = web_sys::window().unwrap();
-                window.clear_timeout_with_handle(timeout_id);
-            }
-            let save_timeout = save_timeout_clone.clone();
-            let left_width_for_save = left_width.clone();
-            let closure = wasm_bindgen::closure::Closure::wrap(Box::new(move || {
-                let width_to_save = left_width_for_save.get();
-                spawn_local(async move {
-                    if let Err(e) = tauri_api::set_panel_left_width(width_to_save).await {
-                        web_sys::console::error_1(
-                            &format!("Failed to save left panel width: {}", e).into(),
-                        );
-                    }
-                });
-                save_timeout.borrow_mut().take();
-            }) as Box<dyn FnMut()>);
-            let timeout_id = web_sys::window()
-                .unwrap()
-                .set_timeout_with_callback_and_timeout_and_arguments_0(
-                    closure.as_ref().unchecked_ref(),
-                    500,
-                )
-                .unwrap();
-            closure.forget();
-            *save_timeout_clone.borrow_mut() = Some(timeout_id);
+            debounced_save_left(new_width);
         }) as std::rc::Rc<dyn Fn(f64)>
     };
 
     let on_resize_right = {
         let right_width = right_width.clone();
-        let save_timeout_clone = right_save_timeout.clone();
+        let debounced_save_right = debounced_save_right.clone();
         std::rc::Rc::new(move |new_width: f64| {
             right_width.set(new_width);
-            // Debounce saves - clear existing timeout and set a new one
-            if let Some(timeout_id) = save_timeout_clone.borrow_mut().take() {
-                let window = web_sys::window().unwrap();
-                window.clear_timeout_with_handle(timeout_id);
-            }
-            let save_timeout = save_timeout_clone.clone();
-            let right_width_for_save = right_width.clone();
-            let closure = wasm_bindgen::closure::Closure::wrap(Box::new(move || {
-                let width_to_save = right_width_for_save.get();
-                spawn_local(async move {
-                    if let Err(e) = tauri_api::set_panel_right_width(width_to_save).await {
-                        web_sys::console::error_1(
-                            &format!("Failed to save right panel width: {}", e).into(),
-                        );
-                    }
-                });
-                save_timeout.borrow_mut().take();
-            }) as Box<dyn FnMut()>);
-            let timeout_id = web_sys::window()
-                .unwrap()
-                .set_timeout_with_callback_and_timeout_and_arguments_0(
-                    closure.as_ref().unchecked_ref(),
-                    500,
-                )
-                .unwrap();
-            closure.forget();
-            *save_timeout_clone.borrow_mut() = Some(timeout_id);
+            debounced_save_right(new_width);
         }) as std::rc::Rc<dyn Fn(f64)>
     };
 
