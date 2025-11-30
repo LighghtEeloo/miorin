@@ -14,6 +14,8 @@ pub fn Panel(
     #[prop(optional)] resizable_right: Option<bool>,
     #[prop(optional)] on_resize_left: Option<Rc<dyn Fn(f64) + 'static>>,
     #[prop(optional)] on_resize_right: Option<Rc<dyn Fn(f64) + 'static>>,
+    #[prop(optional)] on_double_click_resizer: Option<Rc<dyn Fn(bool) + 'static>>,
+    #[prop(optional)] is_left_panel: Option<bool>,
     children: Children,
 ) -> impl IntoView {
     let base_classes = "flex flex-col box-border max-h-full min-h-0 overflow-hidden h-screen relative";
@@ -111,6 +113,8 @@ pub fn Panel(
     view! {
         <div class=div_classes>
             {if show_left_resizer {
+                let on_double_click = on_double_click_resizer.clone();
+                let is_left_panel = is_left_panel.unwrap_or(false);
                 view! {
                     <div
                         node_ref=left_resizer_node_ref
@@ -118,6 +122,11 @@ pub fn Panel(
                         on:mousedown=move |e| {
                             if let Some(ref handler) = left_resizer_on_mousedown {
                                 handler(e);
+                            }
+                        }
+                        on:dblclick=move |_| {
+                            if let Some(ref handler) = on_double_click {
+                                handler(is_left_panel);
                             }
                         }
                     />
@@ -141,6 +150,8 @@ pub fn Panel(
                 </div>
             </div>
             {if show_right_resizer {
+                let on_double_click = on_double_click_resizer.clone();
+                let is_left_panel = is_left_panel.unwrap_or(false);
                 view! {
                     <div
                         node_ref=right_resizer_node_ref
@@ -148,6 +159,11 @@ pub fn Panel(
                         on:mousedown=move |e| {
                             if let Some(ref handler) = right_resizer_on_mousedown {
                                 handler(e);
+                            }
+                        }
+                        on:dblclick=move |_| {
+                            if let Some(ref handler) = on_double_click {
+                                handler(is_left_panel);
                             }
                         }
                     />

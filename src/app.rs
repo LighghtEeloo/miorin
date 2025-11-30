@@ -183,6 +183,48 @@ fn MainView(
         }) as std::rc::Rc<dyn Fn(f64)>
     };
 
+    // Double-click handler to shrink narrower panel when panels meet
+    let on_double_click_resizer = {
+        let left_width = left_width.clone();
+        let right_width = right_width.clone();
+        let debounced_save_left = debounced_save_left.clone();
+        let debounced_save_right = debounced_save_right.clone();
+        std::rc::Rc::new(move |_is_left_panel: bool| {
+            // Get viewport width
+            let viewport_width = web_sys::window()
+                .and_then(|w| w.inner_width().ok())
+                .and_then(|w| w.as_f64())
+                .unwrap_or(1920.0);
+            
+            let current_left = left_width.get();
+            let current_right = right_width.get();
+            let total_panel_width = current_left + current_right;
+            
+            // Check if panels are meeting (within 10px threshold)
+            let threshold = 10.0;
+            if total_panel_width >= viewport_width - threshold {
+                // Find the wider panel
+                let (wider_width, is_left_wider) = if current_left >= current_right {
+                    (current_left, true)
+                } else {
+                    (current_right, false)
+                };
+                
+                // Shrink the wider panel by 30% or minimum 100px, whichever is larger
+                let shrink_amount = (wider_width * 0.3).max(100.0);
+                let new_width = (wider_width - shrink_amount).max(100.0);
+                
+                if is_left_wider {
+                    left_width.set(new_width);
+                    debounced_save_left(new_width);
+                } else {
+                    right_width.set(new_width);
+                    debounced_save_right(new_width);
+                }
+            }
+        }) as std::rc::Rc<dyn Fn(bool)>
+    };
+
     view! {
         <div
             class="grid h-screen max-h-screen overflow-hidden bg-[var(--color-bg)]"
@@ -191,12 +233,16 @@ fn MainView(
             <GlacierPanel
                 cubes=cubes
                 on_resize_right=on_resize_left.clone()
+                on_double_click_resizer=on_double_click_resizer.clone()
+                is_left_panel=true
             />
             <Workspace />
             <StreamPanel
                 raw_entries=raw_entries
                 open_settings=open_settings
                 on_resize_left=on_resize_right.clone()
+                on_double_click_resizer=on_double_click_resizer.clone()
+                is_left_panel=false
             />
         </div>
     }
@@ -204,7 +250,10 @@ fn MainView(
 
 #[component]
 fn GlacierPanel(
-    cubes: RwSignal<Vec<Cube>>, on_resize_right: std::rc::Rc<dyn Fn(f64) + 'static>,
+    cubes: RwSignal<Vec<Cube>>, 
+    on_resize_right: std::rc::Rc<dyn Fn(f64) + 'static>,
+    on_double_click_resizer: std::rc::Rc<dyn Fn(bool) + 'static>,
+    is_left_panel: bool,
 ) -> impl IntoView {
     let create_cube_action = move |_| {
         let cubes_signal = cubes.clone();
@@ -256,6 +305,8 @@ fn GlacierPanel(
             title="Glacier"
             resizable_right=true
             on_resize_right=on_resize_right.clone()
+            on_double_click_resizer=on_double_click_resizer.clone()
+            is_left_panel=is_left_panel
             header_actions=view! {
                 <div class="flex items-center gap-1.5">
                     <FilterButton filter_mode=filter_mode.clone() />
@@ -320,12 +371,16 @@ fn Workspace() -> impl IntoView {
 fn StreamPanel(
     raw_entries: RwSignal<Vec<Raw>>, open_settings: impl Fn(web_sys::MouseEvent) + 'static,
     on_resize_left: std::rc::Rc<dyn Fn(f64) + 'static>,
+    on_double_click_resizer: std::rc::Rc<dyn Fn(bool) + 'static>,
+    is_left_panel: bool,
 ) -> impl IntoView {
     view! {
         <panel::Panel
             title="Stream"
             resizable_left=true
             on_resize_left=on_resize_left.clone()
+            on_double_click_resizer=on_double_click_resizer.clone()
+            is_left_panel=is_left_panel
             header_actions=view! {
                 <button::ActionButton
                     icon=view! { <Icon icon=LuSettings width="12" height="12" /> }
