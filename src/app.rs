@@ -1,7 +1,7 @@
 use crate::ui::{
     button, card,
     color::ColorVariant,
-    filter::{FilterButton, FilterMode},
+    filter::{FilterButton, FilterMode, StreamFilterButton, StreamFilterMode},
     panel,
 };
 use crate::tauri_api;
@@ -375,6 +375,9 @@ fn StreamPanel(
     on_double_click_resizer: std::rc::Rc<dyn Fn(bool) + 'static>,
     is_left_panel: bool,
 ) -> impl IntoView {
+    // Filter state
+    let filter_mode = RwSignal::new(StreamFilterMode::All);
+
     view! {
         <panel::Panel
             title="Stream"
@@ -383,16 +386,31 @@ fn StreamPanel(
             on_double_click_resizer=on_double_click_resizer.clone()
             is_left_panel=is_left_panel
             header_actions=view! {
-                <button::ActionButton
-                    icon=view! { <Icon icon=LuSettings width="12" height="12" /> }
-                    color_variant=ColorVariant::Secondary
-                    on_click=open_settings
-                />
+                <div class="flex items-center gap-1.5">
+                    <StreamFilterButton filter_mode=filter_mode.clone() />
+                    <button::ActionButton
+                        icon=view! { <Icon icon=LuSettings width="12" height="12" /> }
+                        color_variant=ColorVariant::Secondary
+                        on_click=open_settings
+                    />
+                </div>
             }.into_any()
         >
             <card::CardList items=move || {
                 let entries = raw_entries.get();
-                entries.into_iter()
+                let mode = filter_mode.get();
+                let filtered: Vec<_> = entries
+                    .into_iter()
+                    .filter(|raw| {
+                        match mode {
+                            StreamFilterMode::Text => matches!(raw.inner.content, RawContent::Text(_)),
+                            StreamFilterMode::Image => matches!(raw.inner.content, RawContent::Image(_)),
+                            StreamFilterMode::All => true,
+                        }
+                    })
+                    .collect();
+                filtered
+                    .into_iter()
                     .map(|raw| view! { <RawEntry raw=raw /> }.into_any())
                     .collect::<Vec<_>>()
             } />
