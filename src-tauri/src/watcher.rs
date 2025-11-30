@@ -145,31 +145,41 @@ async fn handle_file_event(app: &AppHandle, file_path: &Path) -> Result<(), Stri
         store_blob_from_file(app, blob_id, file_path).await?;
 
         // Generate thumbnail (max 200px)
-        let thumbnail_blob_id = match generate_thumbnail(app, blob_id, 200).await {
-            | Ok((thumb_id, _)) => {
-                tracing::debug!(thumbnail_blob_id = %thumb_id.0, "Generated thumbnail");
-                Some(thumb_id)
-            }
-            | Err(e) => {
-                tracing::warn!(error = %e, "Failed to generate thumbnail, continuing without it");
-                None
+        // Skip thumbnail generation for SVG files (the image crate doesn't support SVG)
+        let thumbnail_blob_id = if format == "svg" {
+            None
+        } else {
+            match generate_thumbnail(app, blob_id, 200).await {
+                | Ok((thumb_id, _)) => {
+                    tracing::debug!(thumbnail_blob_id = %thumb_id.0, "Generated thumbnail");
+                    Some(thumb_id)
+                }
+                | Err(e) => {
+                    tracing::warn!(error = %e, "Failed to generate thumbnail, continuing without it");
+                    None
+                }
             }
         };
 
         // Compute dominant color (simplified - just sample center pixel)
-        let dominant_color_rgb = match image::open(file_path) {
-            | Ok(img) => {
-                let w = img.width();
-                let h = img.height();
-                if w > 0 && h > 0 {
-                    let rgb_img = img.to_rgb8();
-                    let pixel = rgb_img.get_pixel(w / 2, h / 2);
-                    Some([pixel[0], pixel[1], pixel[2]])
-                } else {
-                    None
+        // Skip for SVG files (the image crate doesn't support SVG)
+        let dominant_color_rgb = if format == "svg" {
+            None
+        } else {
+            match image::open(file_path) {
+                | Ok(img) => {
+                    let w = img.width();
+                    let h = img.height();
+                    if w > 0 && h > 0 {
+                        let rgb_img = img.to_rgb8();
+                        let pixel = rgb_img.get_pixel(w / 2, h / 2);
+                        Some([pixel[0], pixel[1], pixel[2]])
+                    } else {
+                        None
+                    }
                 }
+                | Err(_) => None,
             }
-            | Err(_) => None,
         };
 
         RawContent::Image(ImageRaw {
@@ -233,10 +243,80 @@ pub fn is_image_file(path: &Path) -> bool {
 
 /// Get image dimensions and format
 pub fn get_image_info(path: &Path) -> Result<(u32, u32, String), String> {
-    let img = image::open(path).map_err(|e| format!("Failed to open image: {}", e))?;
-
-    let (width, height) = (img.width(), img.height());
     let format = path.extension().and_then(|ext| ext.to_str()).unwrap_or("unknown").to_lowercase();
+    
+    // Special handling for SVG files
+    if format == "svg" {
+        // Try to parse SVG to get dimensions from viewBox or width/height attributes
+        let svg_content = std::fs::read_to_string(path)
+            .map_err(|e| format!("Failed to read SVG file: {}", e))?;
+        
+        // Default dimensions if we can't parse them
+        let mut width = 800u32;
+        let mut height = 600u32;
+        
+        // Try to extract viewBox
+        if let Some(viewbox_start) = svg_content.find("viewBox=") {
+            let after_equals = viewbox_start + 8;
+            // Find the opening quote
+            if let Some(quote_start_offset) = svg_content[after_equals..].find(|c: char| c == '"' || c == '\'') {
+                let value_start = after_equals + quote_start_offset + 1;
+                // Find the closing quote
+                if let Some(quote_end_offset) = svg_content[value_start..].find(|c: char| c == '"' || c == '\'') {
+                    if quote_end_offset > 0 {
+                        let viewbox_str = &svg_content[value_start..value_start + quote_end_offset];
+                        let parts: Vec<&str> = viewbox_str.split_whitespace().collect();
+                        if parts.len() >= 4 {
+                            if let (Ok(w), Ok(h)) = (parts[2].parse::<f64>(), parts[3].parse::<f64>()) {
+                                width = w as u32;
+                                height = h as u32;
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            // Try to extract width and height attributes
+            if let Some(width_start) = svg_content.find("width=") {
+                let after_equals = width_start + 6;
+                // Find the opening quote
+                if let Some(quote_start_offset) = svg_content[after_equals..].find(|c: char| c == '"' || c == '\'') {
+                    let value_start = after_equals + quote_start_offset + 1;
+                    // Find the closing quote or space
+                    if let Some(quote_end_offset) = svg_content[value_start..].find(|c: char| c == '"' || c == '\'' || c == ' ' || c == '>') {
+                        if quote_end_offset > 0 {
+                            let width_str = &svg_content[value_start..value_start + quote_end_offset];
+                            if let Ok(w) = width_str.parse::<f64>() {
+                                width = w as u32;
+                            }
+                        }
+                    }
+                }
+            }
+            if let Some(height_start) = svg_content.find("height=") {
+                let after_equals = height_start + 7;
+                // Find the opening quote
+                if let Some(quote_start_offset) = svg_content[after_equals..].find(|c: char| c == '"' || c == '\'') {
+                    let value_start = after_equals + quote_start_offset + 1;
+                    // Find the closing quote or space
+                    if let Some(quote_end_offset) = svg_content[value_start..].find(|c: char| c == '"' || c == '\'' || c == ' ' || c == '>') {
+                        if quote_end_offset > 0 {
+                            let height_str = &svg_content[value_start..value_start + quote_end_offset];
+                            if let Ok(h) = height_str.parse::<f64>() {
+                                height = h as u32;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        return Ok((width, height, format));
+    }
+    
+    // For raster images, use the image crate
+    let img = image::open(path).map_err(|e| format!("Failed to open image: {}", e))?;
+    let (width, height) = (img.width(), img.height());
 
     Ok((width, height, format))
 }

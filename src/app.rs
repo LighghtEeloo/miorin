@@ -523,6 +523,7 @@ fn RawEntry(raw: Raw) -> impl IntoView {
                                     "jpeg" | "jpg" => "image/jpeg",
                                     "gif" => "image/gif",
                                     "webp" => "image/webp",
+                                    "svg" => "image/svg+xml",
                                     _ => "image/jpeg",
                                 };
                                 let data_url = format!("data:{};base64,{}", mime_type, base64);
@@ -690,6 +691,7 @@ fn RawPreview(content: RawContent) -> impl IntoView {
                                         "jpeg" | "jpg" => "image/jpeg",
                                         "gif" => "image/gif",
                                         "webp" => "image/webp",
+                                        "svg" => "image/svg+xml",
                                         _ => "image/jpeg",
                                     };
                                     let data_url = format!("data:{};base64,{}", mime_type, base64);
