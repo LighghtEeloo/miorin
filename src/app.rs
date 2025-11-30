@@ -1,7 +1,7 @@
 use crate::ui::{
     button, card,
     color::ColorVariant,
-    filter::{FilterButton, FilterMode, StreamFilterButton, StreamFilterMode},
+    filter::{GlacierFilterButton, FilterMode, StreamFilterButton, StreamFilterMode},
     panel,
 };
 use crate::tauri_api;
@@ -317,7 +317,7 @@ fn GlacierPanel(
             is_left_panel=is_left_panel
             header_actions=view! {
                 <div class="flex items-center gap-1.5">
-                    <FilterButton filter_mode=filter_mode.clone() />
+                    <GlacierFilterButton filter_mode=filter_mode.clone() />
                     <button::ActionButton
                         icon=view! { <Icon icon=LuPlus width="12" height="12" /> }
                         color_variant=ColorVariant::Primary
