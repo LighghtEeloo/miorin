@@ -9,11 +9,9 @@ use wasm_bindgen_futures::spawn_local;
 use wasm_bindgen::JsCast;
 use web_sys::KeyboardEvent;
 
-
 #[component]
 fn WatchPathItem(
-    config: tauri_api::WatchPathConfig,
-    on_toggle: impl Fn(String, bool) + Clone + Send + 'static,
+    config: tauri_api::WatchPathConfig, on_toggle: impl Fn(String, bool) + Clone + Send + 'static,
     on_remove: impl Fn(String) + Clone + Send + 'static,
     on_import: impl Fn(String) + Clone + Send + 'static,
 ) -> impl IntoView {
@@ -23,7 +21,7 @@ fn WatchPathItem(
     let path_for_action = path.clone();
 
     view! {
-        <li 
+        <li
             class="flex items-center justify-between p-2.5 mb-2 rounded border bg-[var(--color-bg-secondary)] border-[var(--color-border)]"
         >
             <div class="flex items-center gap-2 flex-1 mr-2.5">
@@ -64,10 +62,7 @@ fn WatchPathItem(
 }
 
 #[component]
-fn ProgressOrError(
-    importing_path: Option<String>,
-    error_message: Option<String>,
-) -> impl IntoView {
+fn ProgressOrError(importing_path: Option<String>, error_message: Option<String>) -> impl IntoView {
     if let Some(path) = importing_path {
         view! {
             <div 
@@ -99,10 +94,7 @@ fn ProgressOrError(
 }
 
 #[component]
-fn AddPathInput(
-    new_path: RwSignal<String>,
-    on_add: impl Fn() + Clone + 'static,
-) -> impl IntoView {
+fn AddPathInput(new_path: RwSignal<String>, on_add: impl Fn() + Clone + 'static) -> impl IntoView {
     let on_add_clone = on_add.clone();
     view! {
         <div class="flex gap-2 mt-2.5">
@@ -175,7 +167,6 @@ pub fn Settings(
     close_settings: impl Fn() + Clone + 'static,
     raw_entries_signal: RwSignal<Vec<miorin_core::prelude::Raw>>,
 ) -> impl IntoView {
-
     // Watch paths state
     let watch_paths = RwSignal::new(Vec::<tauri_api::WatchPathConfig>::new());
     let watch_paths = watch_paths.clone();
@@ -191,7 +182,7 @@ pub fn Settings(
 
     // Debug: Clear all raw entries state
     let clearing_entries = RwSignal::new(false);
-    
+
     // Debug: Show settings storage state
     let showing_settings_storage = RwSignal::new(false);
     let settings_storage_data = RwSignal::new(Option::<String>::None);
@@ -344,17 +335,24 @@ pub fn Settings(
                         );
                         importing_path_inner.set(None);
                         if count > 0 {
-                            error_message_inner.set(Some(format!("Successfully imported {} files", count)));
+                            error_message_inner
+                                .set(Some(format!("Successfully imported {} files", count)));
                             // Refresh raw entries to show newly imported files
                             match tauri_api::get_all_raw_entries().await {
                                 | Ok(entries) => {
                                     web_sys::console::log_1(
-                                        &format!("Successfully refreshed {} raw entries", entries.len()).into(),
+                                        &format!(
+                                            "Successfully refreshed {} raw entries",
+                                            entries.len()
+                                        )
+                                        .into(),
                                     );
                                     raw_entries_signal_inner.set(entries);
                                 }
                                 | Err(e) => {
-                                    web_sys::console::error_1(&format!("Failed to refresh raw entries: {}", e).into());
+                                    web_sys::console::error_1(
+                                        &format!("Failed to refresh raw entries: {}", e).into(),
+                                    );
                                 }
                             }
                         } else {
@@ -374,11 +372,11 @@ pub fn Settings(
     };
 
     view! {
-        <div 
+        <div
             class="fixed top-0 left-0 right-0 bottom-0 w-full h-screen overflow-y-auto z-[1000] bg-[var(--color-bg)]"
         >
             <CloseButton close_settings=close_settings />
-            <div 
+            <div
                 class="pt-[60px] px-5 pb-5 max-w-[800px] mx-auto bg-[var(--color-bg)] text-[var(--color-text)] font-[system-ui,-apple-system,sans-serif]"
             >
                 <div class="mb-8">

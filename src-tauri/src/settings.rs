@@ -30,42 +30,41 @@ async fn get_store(
 #[tauri::command]
 pub async fn get_all_store_data_cmd(app: AppHandle) -> Result<serde_json::Value, String> {
     let store = get_store(&app).await?;
-    
+
     // Collect all known keys and their values
     let mut all_data = serde_json::Map::new();
-    
+
     // Get watch paths if it exists
     if let Some(paths_value) = store.get(WATCH_PATHS_KEY) {
         all_data.insert(WATCH_PATHS_KEY.to_string(), paths_value.clone());
     }
-    
+
     // Try to get all keys by reading the store file directly
     use tauri::Manager;
-    let app_data_dir = app.path().app_data_dir().map_err(|e| format!("Failed to get app data dir: {}", e))?;
+    let app_data_dir =
+        app.path().app_data_dir().map_err(|e| format!("Failed to get app data dir: {}", e))?;
     let store_file_path = app_data_dir.join(SETTINGS_STORE_NAME);
-    
+
     if store_file_path.exists() {
         match std::fs::read_to_string(&store_file_path) {
-            Ok(content) => {
-                match serde_json::from_str::<serde_json::Value>(&content) {
-                    Ok(json_data) => {
-                        if let Some(obj) = json_data.as_object() {
-                            for (key, value) in obj {
-                                all_data.insert(key.clone(), value.clone());
-                            }
+            | Ok(content) => match serde_json::from_str::<serde_json::Value>(&content) {
+                | Ok(json_data) => {
+                    if let Some(obj) = json_data.as_object() {
+                        for (key, value) in obj {
+                            all_data.insert(key.clone(), value.clone());
                         }
                     }
-                    Err(e) => {
-                        tracing::warn!("Failed to parse store file as JSON: {}", e);
-                    }
                 }
-            }
-            Err(e) => {
+                | Err(e) => {
+                    tracing::warn!("Failed to parse store file as JSON: {}", e);
+                }
+            },
+            | Err(e) => {
                 tracing::warn!("Failed to read store file: {}", e);
             }
         }
     }
-    
+
     Ok(serde_json::Value::Object(all_data))
 }
 
@@ -125,13 +124,13 @@ pub async fn set_watch_paths_cmd(
 /// Get devtools visibility setting
 pub async fn get_devtools_visible(app: &AppHandle) -> Result<bool, String> {
     let store = get_store(app).await?;
-    
+
     if let Some(value) = store.get(DEVTOOLS_VISIBLE_KEY) {
         if let Some(bool_val) = value.as_bool() {
             return Ok(bool_val);
         }
     }
-    
+
     // Default to false if not set
     Ok(false)
 }
@@ -159,13 +158,13 @@ pub async fn set_devtools_visible_cmd(app: AppHandle, visible: bool) -> Result<(
 /// Get panel left width setting
 pub async fn get_panel_left_width(app: &AppHandle) -> Result<f64, String> {
     let store = get_store(app).await?;
-    
+
     if let Some(value) = store.get(PANEL_LEFT_WIDTH_KEY) {
         if let Some(width) = value.as_f64() {
             return Ok(width);
         }
     }
-    
+
     // Default to 250.0 if not set
     Ok(250.0)
 }
@@ -181,13 +180,13 @@ pub async fn set_panel_left_width(app: &AppHandle, width: f64) -> Result<(), Str
 /// Get panel right width setting
 pub async fn get_panel_right_width(app: &AppHandle) -> Result<f64, String> {
     let store = get_store(app).await?;
-    
+
     if let Some(value) = store.get(PANEL_RIGHT_WIDTH_KEY) {
         if let Some(width) = value.as_f64() {
             return Ok(width);
         }
     }
-    
+
     // Default to 300.0 if not set
     Ok(300.0)
 }
@@ -328,45 +327,45 @@ pub async fn toggle_watch_path_enabled_cmd(
 pub async fn import_files_from_path_cmd(app: AppHandle, path: String) -> Result<u32, String> {
     // Validate and canonicalize the path
     let canonical_path = validate_and_canonicalize_path(&path)?;
-    
+
     tracing::info!(path = %canonical_path.display(), "Importing files from path");
-    
+
     // Read directory entries
     let entries = std::fs::read_dir(&canonical_path)
         .map_err(|e| format!("Failed to read directory '{}': {}", canonical_path.display(), e))?;
-    
+
     let mut imported_count = 0;
     let mut errors = Vec::new();
-    
+
     // Process each entry
     for entry in entries {
         let entry = entry.map_err(|e| format!("Failed to read directory entry: {}", e))?;
         let file_path = entry.path();
-        
+
         // Skip if it's a directory
         if file_path.is_dir() {
             continue;
         }
-        
+
         // Skip if it's not a file
         if !file_path.is_file() {
             continue;
         }
-        
+
         // Process the file
         match import_file(&app, &file_path).await {
-            Ok(_) => {
+            | Ok(_) => {
                 imported_count += 1;
                 tracing::debug!(file = %file_path.display(), "Imported file");
             }
-            Err(e) => {
+            | Err(e) => {
                 let error_msg = format!("Failed to import file '{}': {}", file_path.display(), e);
                 tracing::warn!(%error_msg);
                 errors.push(error_msg);
             }
         }
     }
-    
+
     if !errors.is_empty() {
         tracing::warn!(
             imported_count = imported_count,
@@ -374,38 +373,37 @@ pub async fn import_files_from_path_cmd(app: AppHandle, path: String) -> Result<
             "Some files failed to import"
         );
     }
-    
+
     tracing::info!(
         path = %canonical_path.display(),
         imported_count = imported_count,
         "Finished importing files"
     );
-    
+
     Ok(imported_count)
 }
 
 /// Import a single file as a raw entry
 async fn import_file(app: &AppHandle, file_path: &Path) -> Result<(), String> {
     use crate::watcher::{is_image_file, get_image_info, infer_mime_type};
-    
+
     // Get file metadata for timestamps first (before creating blob)
-    let file_metadata = std::fs::metadata(file_path)
-        .map_err(|e| format!("Failed to get file metadata: {}", e))?;
-    
+    let file_metadata =
+        std::fs::metadata(file_path).map_err(|e| format!("Failed to get file metadata: {}", e))?;
+
     // Use file modification time, or creation time if modification time is not available
     let file_time = file_metadata
         .modified()
         .or_else(|_| file_metadata.created())
         .map_err(|e| format!("Failed to get file time: {}", e))?;
-    
+
     let file_datetime = chrono::DateTime::<chrono::Utc>::from(file_time);
-    
+
     // Check for duplicate before creating blob
     use crate::db::find_duplicate_raw_entry;
     use crate::db::get_db_pool;
-    let pool = get_db_pool(app).await
-        .map_err(|e| format!("Failed to get database pool: {}", e))?;
-    
+    let pool = get_db_pool(app).await.map_err(|e| format!("Failed to get database pool: {}", e))?;
+
     let source = RawSource::FileWatcher { original_path: file_path.to_path_buf() };
     if let Some(existing) = find_duplicate_raw_entry(&pool, &source, &file_datetime).await? {
         tracing::info!(
@@ -415,13 +413,13 @@ async fn import_file(app: &AppHandle, file_path: &Path) -> Result<(), String> {
         );
         return Ok(());
     }
-    
+
     // Determine file type and read content
     let content = if is_image_file(file_path) {
         // For images, create ImageRaw
         let (width, height, format) = get_image_info(file_path)?;
         let blob_id = BlobId(uuid::Uuid::now_v7());
-        
+
         // Store the image blob
         store_blob_from_file(app, blob_id, file_path).await?;
 
@@ -431,11 +429,11 @@ async fn import_file(app: &AppHandle, file_path: &Path) -> Result<(), String> {
             None
         } else {
             match generate_thumbnail(app, blob_id, 200).await {
-                Ok((thumb_id, _)) => {
+                | Ok((thumb_id, _)) => {
                     tracing::debug!(thumbnail_blob_id = %thumb_id.0, "Generated thumbnail");
                     Some(thumb_id)
                 }
-                Err(e) => {
+                | Err(e) => {
                     tracing::warn!(error = %e, "Failed to generate thumbnail, continuing without it");
                     None
                 }
@@ -448,7 +446,7 @@ async fn import_file(app: &AppHandle, file_path: &Path) -> Result<(), String> {
             None
         } else {
             match image::open(file_path) {
-                Ok(img) => {
+                | Ok(img) => {
                     let w = img.width();
                     let h = img.height();
                     if w > 0 && h > 0 {
@@ -459,10 +457,10 @@ async fn import_file(app: &AppHandle, file_path: &Path) -> Result<(), String> {
                         None
                     }
                 }
-                Err(_) => None,
+                | Err(_) => None,
             }
         };
-        
+
         RawContent::Image(ImageRaw {
             blob_id,
             width,
@@ -475,24 +473,25 @@ async fn import_file(app: &AppHandle, file_path: &Path) -> Result<(), String> {
         // For text files, read the content
         let file_content = std::fs::read_to_string(file_path)
             .map_err(|e| format!("Failed to read file: {}", e))?;
-        
+
         let mime_type = infer_mime_type(file_path);
         let language = None; // Could be inferred later
-        
+
         RawContent::Text(TextRaw { content: file_content, mime_type, language })
     };
-    
+
     let created_at_str = serde_json::to_string(&file_datetime)
         .map_err(|e| format!("Failed to serialize file timestamp: {}", e))?;
-    
+
     // Create Raw entry
     let inner = RawInner {
         source: RawSource::FileWatcher { original_path: file_path.to_path_buf() },
         content,
     };
-    
+
     // Save to database with file timestamps
-    create_raw_entry(app.clone(), inner, Some(created_at_str.clone()), Some(created_at_str)).await?;
-    
+    create_raw_entry(app.clone(), inner, Some(created_at_str.clone()), Some(created_at_str))
+        .await?;
+
     Ok(())
 }

@@ -7,18 +7,16 @@ use std::rc::Rc;
 
 #[component]
 pub fn Panel(
-    title: &'static str,
-    #[prop(optional)] header_actions: Option<AnyView>,
-    #[prop(optional)] class: Option<&'static str>,
-    #[prop(optional)] resizable_left: Option<bool>,
+    title: &'static str, #[prop(optional)] header_actions: Option<AnyView>,
+    #[prop(optional)] class: Option<&'static str>, #[prop(optional)] resizable_left: Option<bool>,
     #[prop(optional)] resizable_right: Option<bool>,
     #[prop(optional)] on_resize_left: Option<Rc<dyn Fn(f64) + 'static>>,
     #[prop(optional)] on_resize_right: Option<Rc<dyn Fn(f64) + 'static>>,
     #[prop(optional)] on_double_click_resizer: Option<Rc<dyn Fn(bool) + 'static>>,
-    #[prop(optional)] is_left_panel: Option<bool>,
-    children: Children,
+    #[prop(optional)] is_left_panel: Option<bool>, children: Children,
 ) -> impl IntoView {
-    let base_classes = "flex flex-col box-border max-h-full min-h-0 overflow-hidden h-screen relative";
+    let base_classes =
+        "flex flex-col box-border max-h-full min-h-0 overflow-hidden h-screen relative";
     let div_classes = class.map_or_else(
         || base_classes.to_string(),
         |custom_class| format!("{} {}", base_classes, custom_class),
@@ -31,7 +29,7 @@ pub fn Panel(
     let resize_state = RwSignal::new(Option::<(f64, f64, bool)>::None);
     let left_callback = on_resize_left.clone();
     let right_callback = on_resize_right.clone();
-    
+
     // Document-level mousemove handler for resizing
     {
         let resize_state = resize_state.clone();
@@ -57,7 +55,7 @@ pub fn Panel(
             }
         });
     }
-    
+
     // Document-level mouseup handler to stop resizing
     {
         let resize_state = resize_state.clone();
@@ -68,27 +66,33 @@ pub fn Panel(
 
     // Helper function to create resizer handler
     fn create_resizer_handler(
-        node_ref: NodeRef<leptos::html::Div>,
-        is_left: bool,
+        node_ref: NodeRef<leptos::html::Div>, is_left: bool,
         resize_state: RwSignal<Option<(f64, f64, bool)>>,
     ) -> impl Fn(MouseEvent) + 'static {
         move |e: MouseEvent| {
             e.prevent_default();
             e.stop_propagation();
-            
-            let panel_element = node_ref.get().and_then(|resizer| {
-                resizer.parent_element()
-            });
-            
-            let Some(panel_el) = panel_element.and_then(|p| p.dyn_ref::<web_sys::Element>().cloned()) else { return; };
+
+            let panel_element = node_ref.get().and_then(|resizer| resizer.parent_element());
+
+            let Some(panel_el) =
+                panel_element.and_then(|p| p.dyn_ref::<web_sys::Element>().cloned())
+            else {
+                return;
+            };
             let start_x = e.client_x() as f64;
             // Get width using getBoundingClientRect via js_sys
-            let start_width = js_sys::Reflect::get(&panel_el, &wasm_bindgen::JsValue::from_str("getBoundingClientRect"))
-                .ok()
-                .and_then(|f| js_sys::Function::from(f).call0(&panel_el).ok())
-                .and_then(|rect| js_sys::Reflect::get(&rect, &wasm_bindgen::JsValue::from_str("width")).ok())
-                .and_then(|w| w.as_f64())
-                .unwrap_or(250.0);
+            let start_width = js_sys::Reflect::get(
+                &panel_el,
+                &wasm_bindgen::JsValue::from_str("getBoundingClientRect"),
+            )
+            .ok()
+            .and_then(|f| js_sys::Function::from(f).call0(&panel_el).ok())
+            .and_then(|rect| {
+                js_sys::Reflect::get(&rect, &wasm_bindgen::JsValue::from_str("width")).ok()
+            })
+            .and_then(|w| w.as_f64())
+            .unwrap_or(250.0);
 
             resize_state.set(Some((start_x, start_width, is_left)));
         }

@@ -14,7 +14,7 @@ fn toggle_devtools(window: tauri::WebviewWindow) {
     if window.is_devtools_open() {
         window.close_devtools();
     } else {
-    window.open_devtools();
+        window.open_devtools();
     }
 }
 
@@ -36,10 +36,10 @@ fn is_devtools_open(window: tauri::WebviewWindow) -> bool {
 #[tauri::command]
 async fn open_folder_dialog_cmd() -> Result<Option<String>, String> {
     use rfd::AsyncFileDialog;
-    
+
     let default_dir = dirs::home_dir().unwrap_or_default();
     let dialog = AsyncFileDialog::new().set_directory(&default_dir).pick_folder().await;
-    
+
     Ok(dialog.map(|handle| handle.path().to_string_lossy().to_string()))
 }
 
@@ -51,15 +51,15 @@ async fn reveal_data_folder_cmd(app: AppHandle) -> Result<String, String> {
         tracing::error!("Failed to get app data dir: {}", e);
         format!("Failed to get app data dir: {}", e)
     })?;
-    
+
     // Ensure the directory exists
     std::fs::create_dir_all(&app_dir).map_err(|e| {
         tracing::error!("Failed to create app data dir: {}", e);
         format!("Failed to create app data dir: {}", e)
     })?;
-    
+
     let path_str = app_dir.to_string_lossy().to_string();
-    
+
     // Open the folder using platform-specific commands
     #[cfg(target_os = "macos")]
     {
@@ -68,16 +68,16 @@ async fn reveal_data_folder_cmd(app: AppHandle) -> Result<String, String> {
         let canonical_path = std::fs::canonicalize(&app_dir)
             .map_err(|e| format!("Failed to canonicalize path: {}", e))?;
         let canonical_str = canonical_path.to_string_lossy().to_string();
-        
+
         tracing::info!(path = %canonical_str, "Opening folder in Finder");
-        
+
         // Use -R flag to reveal the folder in Finder
         let output = Command::new("/usr/bin/open")
             .arg("-R")
             .arg(&canonical_str)
             .output()
             .map_err(|e| format!("Failed to execute open command: {}", e))?;
-        
+
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
             return Err(format!("Failed to open folder: {}", stderr));
@@ -99,7 +99,7 @@ async fn reveal_data_folder_cmd(app: AppHandle) -> Result<String, String> {
             .spawn()
             .map_err(|e| format!("Failed to open folder: {}", e))?;
     }
-    
+
     Ok(path_str)
 }
 
@@ -185,7 +185,9 @@ pub fn run() {
 
                     // Set window size to match screen size using PhysicalSize
                     // Monitor size is in physical pixels, so we use PhysicalSize
-                    if let Err(e) = window.set_size(tauri::PhysicalSize::new(size.width, size.height)) {
+                    if let Err(e) =
+                        window.set_size(tauri::PhysicalSize::new(size.width, size.height))
+                    {
                         tracing::warn!("Failed to set window size: {}", e);
                     }
 

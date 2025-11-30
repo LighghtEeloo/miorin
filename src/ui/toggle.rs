@@ -1,10 +1,7 @@
 use leptos::prelude::*;
 
 #[component]
-pub fn Toggle(
-    enabled: RwSignal<bool>,
-    on_change: impl Fn(bool) + 'static,
-) -> impl IntoView {
+pub fn Toggle(enabled: RwSignal<bool>, on_change: impl Fn(bool) + 'static) -> impl IntoView {
     view! {
         <label class="relative inline-block w-9 h-5">
             <input
@@ -17,11 +14,11 @@ pub fn Toggle(
                     on_change(new_value);
                 }
             />
-            <span 
+            <span
                 class="absolute cursor-pointer top-0 left-0 right-0 bottom-0 rounded-full transition-all duration-300"
                 style=move || if enabled.get() { "background-color: var(--color-primary);" } else { "background-color: var(--color-toggle-bg);" }
             >
-                <span 
+                <span
                     class="absolute h-[14px] w-[14px] left-[3px] bottom-[3px] rounded-full transition-all duration-300"
                     style=move || {
                         let thumb_color = "background-color: var(--color-toggle-thumb);";
@@ -33,4 +30,3 @@ pub fn Toggle(
         </label>
     }
 }
-

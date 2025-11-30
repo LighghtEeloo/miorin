@@ -1,10 +1,7 @@
 use leptos::prelude::*;
 
 #[component]
-pub fn CardList<F>(
-    items: F,
-    #[prop(optional)] class: Option<&'static str>,
-) -> impl IntoView
+pub fn CardList<F>(items: F, #[prop(optional)] class: Option<&'static str>) -> impl IntoView
 where
     F: Fn() -> Vec<AnyView> + 'static + Send,
 {
@@ -20,4 +17,3 @@ where
         </div>
     }
 }
-

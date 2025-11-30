@@ -17,9 +17,7 @@ pub enum StreamFilterMode {
 }
 
 #[component]
-pub fn FilterButton(
-    filter_mode: RwSignal<FilterMode>,
-) -> impl IntoView {
+pub fn FilterButton(filter_mode: RwSignal<FilterMode>) -> impl IntoView {
     let show_filter_permanent = RwSignal::new(false);
     let show_filter_hover = RwSignal::new(false);
 
@@ -65,7 +63,7 @@ pub fn FilterButton(
                 let show = show_filter_permanent.get() || show_filter_hover.get();
                 if show {
                     view! {
-                        <div 
+                        <div
                             class="absolute top-full right-0 mt-0.5 z-50"
                             on:mouseenter=move |_| {
                                 show_filter_hover.set(true);
@@ -112,9 +110,7 @@ pub fn FilterButton(
 }
 
 #[component]
-pub fn StreamFilterButton(
-    filter_mode: RwSignal<StreamFilterMode>,
-) -> impl IntoView {
+pub fn StreamFilterButton(filter_mode: RwSignal<StreamFilterMode>) -> impl IntoView {
     let show_filter_permanent = RwSignal::new(false);
     let show_filter_hover = RwSignal::new(false);
 
@@ -167,7 +163,7 @@ pub fn StreamFilterButton(
                 let show = show_filter_permanent.get() || show_filter_hover.get();
                 if show {
                     view! {
-                        <div 
+                        <div
                             class="absolute top-full right-0 mt-0.5 z-50"
                             on:mouseenter=move |_| {
                                 show_filter_hover.set(true);
@@ -225,4 +221,3 @@ pub fn StreamFilterButton(
         </div>
     }
 }
-

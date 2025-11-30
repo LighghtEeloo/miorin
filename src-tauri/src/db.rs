@@ -128,8 +128,8 @@ pub async fn get_all_raw_entries(app: AppHandle) -> Result<Vec<Raw>, String> {
         let id = RawId(uuid::Uuid::parse_str(&id_str).map_err(|e| format!("Invalid UUID: {}", e))?);
 
         let tags_json: String = row.get("tags_json");
-        let tags: Vec<String> = serde_json::from_str(&tags_json)
-            .map_err(|e| format!("Failed to parse tags: {}", e))?;
+        let tags: Vec<String> =
+            serde_json::from_str(&tags_json).map_err(|e| format!("Failed to parse tags: {}", e))?;
 
         let created_at_str: String = row.get("created_at");
         let created_at: DateTime<Utc> = serde_json::from_str(&created_at_str)
@@ -271,9 +271,7 @@ pub(crate) async fn find_duplicate_raw_entry(
 }
 
 /// Get the last raw entry from clipboard source
-pub(crate) async fn get_last_clipboard_entry(
-    pool: &SqlitePool,
-) -> Result<Option<Raw>, String> {
+pub(crate) async fn get_last_clipboard_entry(pool: &SqlitePool) -> Result<Option<Raw>, String> {
     let source_json = serde_json::to_string(&RawSource::Clipboard { application: None })
         .map_err(|e| format!("Failed to serialize clipboard source: {}", e))?;
 
@@ -291,13 +289,11 @@ pub(crate) async fn get_last_clipboard_entry(
 
     if let Some(row) = row {
         let id_str: String = row.get("id");
-        let id = RawId(
-            uuid::Uuid::parse_str(&id_str).map_err(|e| format!("Invalid UUID: {}", e))?,
-        );
+        let id = RawId(uuid::Uuid::parse_str(&id_str).map_err(|e| format!("Invalid UUID: {}", e))?);
 
         let tags_json: String = row.get("tags_json");
-        let tags: Vec<String> = serde_json::from_str(&tags_json)
-            .map_err(|e| format!("Failed to parse tags: {}", e))?;
+        let tags: Vec<String> =
+            serde_json::from_str(&tags_json).map_err(|e| format!("Failed to parse tags: {}", e))?;
 
         let created_at_str: String = row.get("created_at");
         let created_at: DateTime<Utc> = serde_json::from_str(&created_at_str)
@@ -307,20 +303,19 @@ pub(crate) async fn get_last_clipboard_entry(
         let updated_at: DateTime<Utc> = serde_json::from_str(&updated_at_str)
             .map_err(|e| format!("Failed to parse updated_at: {}", e))?;
 
-        let vibe: Option<Vibe> = if let Some(vibe_json) =
-            row.try_get::<Option<String>, _>("vibe_json").ok().flatten()
-        {
-            if vibe_json == "null" || vibe_json.is_empty() {
-                None
+        let vibe: Option<Vibe> =
+            if let Some(vibe_json) = row.try_get::<Option<String>, _>("vibe_json").ok().flatten() {
+                if vibe_json == "null" || vibe_json.is_empty() {
+                    None
+                } else {
+                    Some(
+                        serde_json::from_str(&vibe_json)
+                            .map_err(|e| format!("Failed to parse vibe: {}", e))?,
+                    )
+                }
             } else {
-                Some(
-                    serde_json::from_str(&vibe_json)
-                        .map_err(|e| format!("Failed to parse vibe: {}", e))?,
-                )
-            }
-        } else {
-            None
-        };
+                None
+            };
 
         let source_json: String = row.get("source_json");
         let source: RawSource = serde_json::from_str(&source_json)
@@ -384,8 +379,8 @@ pub async fn create_raw_entry(
     let raw = Raw { id, tags: vec![], created_at, updated_at, vibe: None, inner };
 
     let id_str = id.0.to_string();
-    let tags_json = serde_json::to_string(&raw.tags)
-        .map_err(|e| format!("Failed to serialize tags: {}", e))?;
+    let tags_json =
+        serde_json::to_string(&raw.tags).map_err(|e| format!("Failed to serialize tags: {}", e))?;
     let created_at_str = serde_json::to_string(&raw.created_at)
         .map_err(|e| format!("Failed to serialize created_at: {}", e))?;
     let updated_at_str = serde_json::to_string(&raw.updated_at)
@@ -436,8 +431,8 @@ pub async fn update_raw_entry(
     .ok_or("Raw entry not found")?;
 
     let tags_json: String = row.get("tags_json");
-    let tags: Vec<String> = serde_json::from_str(&tags_json)
-        .map_err(|e| format!("Failed to parse tags: {}", e))?;
+    let tags: Vec<String> =
+        serde_json::from_str(&tags_json).map_err(|e| format!("Failed to parse tags: {}", e))?;
 
     let created_at_str: String = row.get("created_at");
     let created_at: DateTime<Utc> = serde_json::from_str(&created_at_str)
@@ -486,8 +481,8 @@ pub async fn update_raw_entry(
         inner: RawInner { source, content },
     };
 
-    let tags_json = serde_json::to_string(&raw.tags)
-        .map_err(|e| format!("Failed to serialize tags: {}", e))?;
+    let tags_json =
+        serde_json::to_string(&raw.tags).map_err(|e| format!("Failed to serialize tags: {}", e))?;
     let updated_at_str = serde_json::to_string(&raw.updated_at)
         .map_err(|e| format!("Failed to serialize updated_at: {}", e))?;
     let vibe_json = if let Some(ref v) = raw.vibe {
@@ -563,8 +558,8 @@ pub async fn get_all_cubes(app: AppHandle) -> Result<Vec<Cube>, String> {
             CubeId(uuid::Uuid::parse_str(&id_str).map_err(|e| format!("Invalid UUID: {}", e))?);
 
         let tags_json: String = row.get("tags_json");
-        let tags: Vec<String> = serde_json::from_str(&tags_json)
-            .map_err(|e| format!("Failed to parse tags: {}", e))?;
+        let tags: Vec<String> =
+            serde_json::from_str(&tags_json).map_err(|e| format!("Failed to parse tags: {}", e))?;
 
         let created_at_str: String = row.get("created_at");
         let created_at: DateTime<Utc> = serde_json::from_str(&created_at_str)
@@ -633,13 +628,16 @@ pub async fn create_cube(app: AppHandle, pin: bool, content: CubeContent) -> Res
     let updated_at_str = serde_json::to_string(&cube.updated_at)
         .map_err(|e| format!("Failed to serialize updated_at: {}", e))?;
     let pin_int = if cube.inner.pin { 1 } else { 0 };
-    let content_json = serde_json::to_string(&cube.inner.content)
-        .map_err(|e| {
-            tracing::error!("Failed to serialize content: {}", e);
-            format!("Failed to serialize content: {}", e)
-        })?;
+    let content_json = serde_json::to_string(&cube.inner.content).map_err(|e| {
+        tracing::error!("Failed to serialize content: {}", e);
+        format!("Failed to serialize content: {}", e)
+    })?;
 
-    tracing::debug!("Creating cube with pin={}, content_json length={}", pin_int, content_json.len());
+    tracing::debug!(
+        "Creating cube with pin={}, content_json length={}",
+        pin_int,
+        content_json.len()
+    );
 
     sqlx::query(
         "INSERT INTO cubes (id, tags_json, pin, content_json, created_at, updated_at, vibe_json) VALUES (?, ?, ?, ?, ?, ?, ?)"
@@ -682,8 +680,8 @@ pub async fn update_cube(
     .ok_or("Cube not found")?;
 
     let tags_json: String = row.get("tags_json");
-    let tags: Vec<String> = serde_json::from_str(&tags_json)
-        .map_err(|e| format!("Failed to parse tags: {}", e))?;
+    let tags: Vec<String> =
+        serde_json::from_str(&tags_json).map_err(|e| format!("Failed to parse tags: {}", e))?;
 
     let created_at_str: String = row.get("created_at");
     let created_at: DateTime<Utc> = serde_json::from_str(&created_at_str)
@@ -732,15 +730,17 @@ pub async fn update_cube(
     let content_json = serde_json::to_string(&cube.inner.content)
         .map_err(|e| format!("Failed to serialize content: {}", e))?;
 
-    sqlx::query("UPDATE cubes SET tags_json = ?, pin = ?, content_json = ?, updated_at = ? WHERE id = ?")
-        .bind(&tags_json)
-        .bind(pin_int)
-        .bind(&content_json)
-        .bind(&updated_at_str)
-        .bind(&id)
-        .execute(&pool)
-        .await
-        .map_err(|e| format!("Failed to update cube: {}", e))?;
+    sqlx::query(
+        "UPDATE cubes SET tags_json = ?, pin = ?, content_json = ?, updated_at = ? WHERE id = ?",
+    )
+    .bind(&tags_json)
+    .bind(pin_int)
+    .bind(&content_json)
+    .bind(&updated_at_str)
+    .bind(&id)
+    .execute(&pool)
+    .await
+    .map_err(|e| format!("Failed to update cube: {}", e))?;
 
     Ok(cube)
 }

@@ -215,7 +215,11 @@ pub async fn store_blob(blob_id: String, data: Vec<u8>) -> Result<(), String> {
 
 /// Store a blob from a file path
 pub async fn store_blob_from_file(blob_id: String, source_path: String) -> Result<(), String> {
-    invoke_tauri("store_blob_from_file_cmd", serde_json::json!({ "blob_id": blob_id, "source_path": source_path })).await
+    invoke_tauri(
+        "store_blob_from_file_cmd",
+        serde_json::json!({ "blob_id": blob_id, "source_path": source_path }),
+    )
+    .await
 }
 
 /// Get blob data
@@ -235,7 +239,11 @@ pub async fn delete_blob(blob_id: String) -> Result<(), String> {
 
 /// Generate a thumbnail for an image blob
 pub async fn generate_thumbnail(source_blob_id: String, max_size: u32) -> Result<String, String> {
-    invoke_tauri("generate_thumbnail_cmd", serde_json::json!({ "source_blob_id": source_blob_id, "max_size": max_size })).await
+    invoke_tauri(
+        "generate_thumbnail_cmd",
+        serde_json::json!({ "source_blob_id": source_blob_id, "max_size": max_size }),
+    )
+    .await
 }
 
 /// Get all stored local data from the settings store
@@ -307,27 +315,27 @@ where
     let window = web_sys::window().ok_or("Window not available")?;
     let tauri = js_sys::Reflect::get(&window, &JsValue::from_str("__TAURI__"))
         .map_err(|_| "Tauri API not available")?;
-    
+
     let event = js_sys::Reflect::get(&tauri, &JsValue::from_str("event"))
         .map_err(|_| "Tauri event API not available")?;
-    
+
     let listen_fn = js_sys::Reflect::get(&event, &JsValue::from_str("listen"))
         .map_err(|_| "Tauri event.listen function not available")?;
-    
+
     let event_name_js = JsValue::from_str(event_name);
-    
+
     // Wrap the callback in a Closure
     let closure = wasm_bindgen::closure::Closure::wrap(Box::new(move |event: JsValue| {
         callback(event);
     }) as Box<dyn FnMut(JsValue)>);
-    
+
     // Call listen(event_name, handler)
     js_sys::Function::from(listen_fn)
         .call2(&event, &event_name_js, closure.as_ref().unchecked_ref())
         .map_err(|e| format!("Failed to listen to event: {:?}", e))?;
-    
+
     // Forget the closure so it stays alive
     closure.forget();
-    
+
     Ok(())
 }

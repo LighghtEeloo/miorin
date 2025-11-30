@@ -213,8 +213,9 @@ async fn handle_file_event(app: &AppHandle, file_path: &Path) -> Result<(), Stri
     };
 
     // Save to database with file timestamps
-    let raw = create_raw_entry(app.clone(), inner, Some(created_at_str.clone()), Some(created_at_str))
-        .await?;
+    let raw =
+        create_raw_entry(app.clone(), inner, Some(created_at_str.clone()), Some(created_at_str))
+            .await?;
 
     tracing::info!(file_path = ?file_path, "Created raw entry from file");
 
@@ -246,30 +247,36 @@ pub fn is_image_file(path: &Path) -> bool {
 /// Get image dimensions and format
 pub fn get_image_info(path: &Path) -> Result<(u32, u32, String), String> {
     let format = path.extension().and_then(|ext| ext.to_str()).unwrap_or("unknown").to_lowercase();
-    
+
     // Special handling for SVG files
     if format == "svg" {
         // Try to parse SVG to get dimensions from viewBox or width/height attributes
-        let svg_content = std::fs::read_to_string(path)
-            .map_err(|e| format!("Failed to read SVG file: {}", e))?;
-        
+        let svg_content =
+            std::fs::read_to_string(path).map_err(|e| format!("Failed to read SVG file: {}", e))?;
+
         // Default dimensions if we can't parse them
         let mut width = 800u32;
         let mut height = 600u32;
-        
+
         // Try to extract viewBox
         if let Some(viewbox_start) = svg_content.find("viewBox=") {
             let after_equals = viewbox_start + 8;
             // Find the opening quote
-            if let Some(quote_start_offset) = svg_content[after_equals..].find(|c: char| c == '"' || c == '\'') {
+            if let Some(quote_start_offset) =
+                svg_content[after_equals..].find(|c: char| c == '"' || c == '\'')
+            {
                 let value_start = after_equals + quote_start_offset + 1;
                 // Find the closing quote
-                if let Some(quote_end_offset) = svg_content[value_start..].find(|c: char| c == '"' || c == '\'') {
+                if let Some(quote_end_offset) =
+                    svg_content[value_start..].find(|c: char| c == '"' || c == '\'')
+                {
                     if quote_end_offset > 0 {
                         let viewbox_str = &svg_content[value_start..value_start + quote_end_offset];
                         let parts: Vec<&str> = viewbox_str.split_whitespace().collect();
                         if parts.len() >= 4 {
-                            if let (Ok(w), Ok(h)) = (parts[2].parse::<f64>(), parts[3].parse::<f64>()) {
+                            if let (Ok(w), Ok(h)) =
+                                (parts[2].parse::<f64>(), parts[3].parse::<f64>())
+                            {
                                 width = w as u32;
                                 height = h as u32;
                             }
@@ -282,12 +289,17 @@ pub fn get_image_info(path: &Path) -> Result<(u32, u32, String), String> {
             if let Some(width_start) = svg_content.find("width=") {
                 let after_equals = width_start + 6;
                 // Find the opening quote
-                if let Some(quote_start_offset) = svg_content[after_equals..].find(|c: char| c == '"' || c == '\'') {
+                if let Some(quote_start_offset) =
+                    svg_content[after_equals..].find(|c: char| c == '"' || c == '\'')
+                {
                     let value_start = after_equals + quote_start_offset + 1;
                     // Find the closing quote or space
-                    if let Some(quote_end_offset) = svg_content[value_start..].find(|c: char| c == '"' || c == '\'' || c == ' ' || c == '>') {
+                    if let Some(quote_end_offset) = svg_content[value_start..]
+                        .find(|c: char| c == '"' || c == '\'' || c == ' ' || c == '>')
+                    {
                         if quote_end_offset > 0 {
-                            let width_str = &svg_content[value_start..value_start + quote_end_offset];
+                            let width_str =
+                                &svg_content[value_start..value_start + quote_end_offset];
                             if let Ok(w) = width_str.parse::<f64>() {
                                 width = w as u32;
                             }
@@ -298,12 +310,17 @@ pub fn get_image_info(path: &Path) -> Result<(u32, u32, String), String> {
             if let Some(height_start) = svg_content.find("height=") {
                 let after_equals = height_start + 7;
                 // Find the opening quote
-                if let Some(quote_start_offset) = svg_content[after_equals..].find(|c: char| c == '"' || c == '\'') {
+                if let Some(quote_start_offset) =
+                    svg_content[after_equals..].find(|c: char| c == '"' || c == '\'')
+                {
                     let value_start = after_equals + quote_start_offset + 1;
                     // Find the closing quote or space
-                    if let Some(quote_end_offset) = svg_content[value_start..].find(|c: char| c == '"' || c == '\'' || c == ' ' || c == '>') {
+                    if let Some(quote_end_offset) = svg_content[value_start..]
+                        .find(|c: char| c == '"' || c == '\'' || c == ' ' || c == '>')
+                    {
                         if quote_end_offset > 0 {
-                            let height_str = &svg_content[value_start..value_start + quote_end_offset];
+                            let height_str =
+                                &svg_content[value_start..value_start + quote_end_offset];
                             if let Ok(h) = height_str.parse::<f64>() {
                                 height = h as u32;
                             }
@@ -312,10 +329,10 @@ pub fn get_image_info(path: &Path) -> Result<(u32, u32, String), String> {
                 }
             }
         }
-        
+
         return Ok((width, height, format));
     }
-    
+
     // For raster images, use the image crate
     let img = image::open(path).map_err(|e| format!("Failed to open image: {}", e))?;
     let (width, height) = (img.width(), img.height());
@@ -357,8 +374,8 @@ pub async fn start_clipboard_watcher(app: AppHandle) -> Result<(), String> {
     let app_clone = app.clone();
     tauri::async_runtime::spawn(async move {
         let mut clipboard = match arboard::Clipboard::new() {
-            Ok(clip) => clip,
-            Err(e) => {
+            | Ok(clip) => clip,
+            | Err(e) => {
                 tracing::error!("Failed to initialize clipboard in spawn: {}", e);
                 return;
             }
@@ -366,7 +383,7 @@ pub async fn start_clipboard_watcher(app: AppHandle) -> Result<(), String> {
 
         // Read clipboard on start and process if it meets criteria (size < 1MB and different from last entry)
         let initial_hash = match get_clipboard_hash(&mut clipboard).await {
-            Ok(Some(hash)) => {
+            | Ok(Some(hash)) => {
                 tracing::debug!("Reading clipboard on start, will process if it meets criteria");
                 // Process initial clipboard content
                 if let Err(e) = handle_clipboard_event(&app_clone, &mut clipboard).await {
@@ -374,12 +391,15 @@ pub async fn start_clipboard_watcher(app: AppHandle) -> Result<(), String> {
                 }
                 Some(hash)
             }
-            Ok(None) => {
+            | Ok(None) => {
                 tracing::debug!("Clipboard is empty on start");
                 None
             }
-            Err(e) => {
-                tracing::debug!("Error reading clipboard on start: {}, will continue monitoring", e);
+            | Err(e) => {
+                tracing::debug!(
+                    "Error reading clipboard on start: {}, will continue monitoring",
+                    e
+                );
                 None
             }
         };
@@ -391,12 +411,12 @@ pub async fn start_clipboard_watcher(app: AppHandle) -> Result<(), String> {
 
             // Calculate hash of current clipboard content
             let current_hash = match get_clipboard_hash(&mut clipboard).await {
-                Ok(Some(hash)) => hash,
-                Ok(None) => {
+                | Ok(Some(hash)) => hash,
+                | Ok(None) => {
                     // Clipboard is empty or error reading, skip
                     continue;
                 }
-                Err(e) => {
+                | Err(e) => {
                     tracing::debug!("Error reading clipboard: {}", e);
                     continue;
                 }
@@ -412,7 +432,7 @@ pub async fn start_clipboard_watcher(app: AppHandle) -> Result<(), String> {
 
             // Clipboard content has changed, process it
             last_hash = Some(current_hash);
-            
+
             if let Err(e) = handle_clipboard_event(&app_clone, &mut clipboard).await {
                 tracing::error!(error = %e, "Failed to handle clipboard event");
             }
@@ -426,33 +446,33 @@ pub async fn start_clipboard_watcher(app: AppHandle) -> Result<(), String> {
 async fn get_clipboard_hash(clipboard: &mut arboard::Clipboard) -> Result<Option<u64>, String> {
     // Try to get text first
     match clipboard.get_text() {
-        Ok(text) => {
+        | Ok(text) => {
             let mut hasher = DefaultHasher::new();
             text.hash(&mut hasher);
             return Ok(Some(hasher.finish()));
         }
-        Err(arboard::Error::ContentNotAvailable) => {
+        | Err(arboard::Error::ContentNotAvailable) => {
             // Text not available, try image
         }
-        Err(e) => {
+        | Err(e) => {
             return Err(format!("Failed to get clipboard text: {}", e));
         }
     }
 
     // Try to get image
     match clipboard.get_image() {
-        Ok(img) => {
+        | Ok(img) => {
             let mut hasher = DefaultHasher::new();
             img.bytes.hash(&mut hasher);
             img.width.hash(&mut hasher);
             img.height.hash(&mut hasher);
             return Ok(Some(hasher.finish()));
         }
-        Err(arboard::Error::ContentNotAvailable) => {
+        | Err(arboard::Error::ContentNotAvailable) => {
             // Neither text nor image available
             return Ok(None);
         }
-        Err(e) => {
+        | Err(e) => {
             return Err(format!("Failed to get clipboard image: {}", e));
         }
     }
@@ -460,14 +480,13 @@ async fn get_clipboard_hash(clipboard: &mut arboard::Clipboard) -> Result<Option
 
 /// Handle a clipboard change event by creating a Raw entry
 async fn handle_clipboard_event(
-    app: &AppHandle,
-    clipboard: &mut arboard::Clipboard,
+    app: &AppHandle, clipboard: &mut arboard::Clipboard,
 ) -> Result<(), String> {
     tracing::info!("Handling clipboard event");
 
     let now = chrono::Utc::now();
-    let created_at_str = serde_json::to_string(&now)
-        .map_err(|e| format!("Failed to serialize timestamp: {}", e))?;
+    let created_at_str =
+        serde_json::to_string(&now).map_err(|e| format!("Failed to serialize timestamp: {}", e))?;
 
     // Check for duplicate before processing
     use crate::db::{get_last_clipboard_entry, get_db_pool};
@@ -475,7 +494,7 @@ async fn handle_clipboard_event(
 
     // Try to get text first
     let content = match clipboard.get_text() {
-        Ok(text) => {
+        | Ok(text) => {
             // Check size limit (1MB = 1,048,576 bytes)
             const MAX_SIZE: usize = 1_048_576;
             if text.len() > MAX_SIZE {
@@ -485,7 +504,9 @@ async fn handle_clipboard_event(
 
             // Check if content matches the last clipboard entry
             if let Some(last_entry) = get_last_clipboard_entry(&pool).await? {
-                if let RawContent::Text(TextRaw { content: last_content, .. }) = &last_entry.inner.content {
+                if let RawContent::Text(TextRaw { content: last_content, .. }) =
+                    &last_entry.inner.content
+                {
                     if last_content == &text {
                         tracing::debug!("Clipboard text matches last entry, skipping");
                         return Ok(());
@@ -500,38 +521,52 @@ async fn handle_clipboard_event(
                 language: None,
             })
         }
-        Err(arboard::Error::ContentNotAvailable) => {
+        | Err(arboard::Error::ContentNotAvailable) => {
             // Text not available, try image
             match clipboard.get_image() {
-                Ok(img) => {
+                | Ok(img) => {
                     // Check size limit (1MB = 1,048,576 bytes)
                     // Estimate size: width * height * 4 bytes (RGBA) + some overhead
                     const MAX_SIZE: usize = 1_048_576;
                     let estimated_size = (img.width as usize) * (img.height as usize) * 4;
                     if estimated_size > MAX_SIZE {
-                        tracing::debug!(estimated_size = estimated_size, "Clipboard image too large, skipping");
+                        tracing::debug!(
+                            estimated_size = estimated_size,
+                            "Clipboard image too large, skipping"
+                        );
                         return Ok(());
                     }
 
                     // Check if image matches the last clipboard entry (compare dimensions and hash)
                     if let Some(last_entry) = get_last_clipboard_entry(&pool).await? {
-                        if let RawContent::Image(ImageRaw { width: last_width, height: last_height, blob_id: last_blob_id, .. }) = &last_entry.inner.content {
+                        if let RawContent::Image(ImageRaw {
+                            width: last_width,
+                            height: last_height,
+                            blob_id: last_blob_id,
+                            ..
+                        }) = &last_entry.inner.content
+                        {
                             // Compare dimensions first (quick check)
-                            if last_width == &(img.width as u32) && last_height == &(img.height as u32) {
+                            if last_width == &(img.width as u32)
+                                && last_height == &(img.height as u32)
+                            {
                                 // Dimensions match, compare image hash
                                 let mut hasher = DefaultHasher::new();
                                 img.bytes.hash(&mut hasher);
                                 let current_hash = hasher.finish();
-                                
+
                                 // Get the last image blob and compare
                                 use crate::blob::get_blob_data;
-                                if let Ok(last_image_data) = get_blob_data(app, *last_blob_id).await {
+                                if let Ok(last_image_data) = get_blob_data(app, *last_blob_id).await
+                                {
                                     let mut last_hasher = DefaultHasher::new();
                                     last_image_data.hash(&mut last_hasher);
                                     let last_hash = last_hasher.finish();
-                                    
+
                                     if current_hash == last_hash {
-                                        tracing::debug!("Clipboard image matches last entry, skipping");
+                                        tracing::debug!(
+                                            "Clipboard image matches last entry, skipping"
+                                        );
                                         return Ok(());
                                     }
                                 }
@@ -541,21 +576,26 @@ async fn handle_clipboard_event(
 
                     // Store the image blob
                     let blob_id = BlobId(uuid::Uuid::now_v7());
-                    
+
                     // arboard gives us RGBA bytes, convert to image::RgbaImage
                     let rgba_image = image::RgbaImage::from_raw(
                         img.width as u32,
                         img.height as u32,
                         img.bytes.to_vec(),
                     )
-                    .ok_or_else(|| format!("Failed to create image from clipboard data: invalid dimensions or data"))?;
+                    .ok_or_else(|| {
+                        format!(
+                            "Failed to create image from clipboard data: invalid dimensions or data"
+                        )
+                    })?;
 
                     // Convert to DynamicImage and save as PNG
                     let dynamic_img = image::DynamicImage::ImageRgba8(rgba_image);
                     let mut png_data = Vec::new();
                     {
                         let mut cursor = std::io::Cursor::new(&mut png_data);
-                        dynamic_img.write_to(&mut cursor, image::ImageFormat::Png)
+                        dynamic_img
+                            .write_to(&mut cursor, image::ImageFormat::Png)
                             .map_err(|e| format!("Failed to encode PNG: {}", e))?;
                     }
 
@@ -566,11 +606,11 @@ async fn handle_clipboard_event(
 
                     // Generate thumbnail
                     let thumbnail_blob_id = match generate_thumbnail(app, blob_id, 200).await {
-                        Ok((thumb_id, _)) => {
+                        | Ok((thumb_id, _)) => {
                             tracing::debug!(thumbnail_blob_id = %thumb_id.0, "Generated thumbnail");
                             Some(thumb_id)
                         }
-                        Err(e) => {
+                        | Err(e) => {
                             tracing::warn!(error = %e, "Failed to generate thumbnail, continuing without it");
                             None
                         }
@@ -601,34 +641,27 @@ async fn handle_clipboard_event(
                         dominant_color_rgb,
                     })
                 }
-                Err(arboard::Error::ContentNotAvailable) => {
+                | Err(arboard::Error::ContentNotAvailable) => {
                     tracing::debug!("Clipboard is empty, skipping");
                     return Ok(());
                 }
-                Err(e) => {
+                | Err(e) => {
                     return Err(format!("Failed to get clipboard image: {}", e));
                 }
             }
         }
-        Err(e) => {
+        | Err(e) => {
             return Err(format!("Failed to get clipboard text: {}", e));
         }
     };
 
     // Create Raw entry
-    let inner = RawInner {
-        source: RawSource::Clipboard { application: None },
-        content,
-    };
+    let inner = RawInner { source: RawSource::Clipboard { application: None }, content };
 
     // Save to database
-    let raw = create_raw_entry(
-        app.clone(),
-        inner,
-        Some(created_at_str.clone()),
-        Some(created_at_str),
-    )
-    .await?;
+    let raw =
+        create_raw_entry(app.clone(), inner, Some(created_at_str.clone()), Some(created_at_str))
+            .await?;
 
     tracing::info!("Created raw entry from clipboard");
 
