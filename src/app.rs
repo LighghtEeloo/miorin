@@ -7,10 +7,11 @@ use crate::ui::{
 use crate::tauri_api;
 use leptos::prelude::*;
 use leptos_icons::Icon;
-use leptos_use::use_debounce_fn_with_arg;
+use leptos_use::{use_debounce_fn_with_arg, use_element_hover};
 use icondata::{LuPlus, LuSettings, LuTrash2};
 use miorin_core::prelude::*;
 use wasm_bindgen_futures::spawn_local;
+use base64::{Engine as _, engine::general_purpose};
 
 #[component]
 pub fn App() -> impl IntoView {
@@ -471,10 +472,177 @@ fn RawEntry(raw: Raw) -> impl IntoView {
     let source = format_raw_source(&raw.inner.source);
     let created = raw.created_at.format("%Y-%m-%d %H:%M").to_string();
     let content = raw.inner.content.clone();
+    
+    // Node ref for hover detection
+    let element_ref = NodeRef::<leptos::html::Div>::new();
+    
+    // Use leptos_use hover utility
+    let is_hovered = use_element_hover(element_ref);
+    let preview_image_url = RwSignal::new(Option::<String>::None);
+    
+    // Only handle hover for image entries
+    let is_image = matches!(content, RawContent::Image(_));
+    
+    // Get image dimensions for positioning calculations
+    let image_dimensions = if let RawContent::Image(img) = &content {
+        Some((img.width as f64, img.height as f64))
+    } else {
+        None
+    };
+    
+    // Load full image on hover
+    if is_image {
+        let is_hovered_for_load = is_hovered.clone();
+        let preview_image_url_for_load = preview_image_url.clone();
+        let content_for_load = content.clone();
+        
+        Effect::new(move |_| {
+            if is_hovered_for_load.get() {
+                if let RawContent::Image(img) = &content_for_load {
+                    let blob_id = img.blob_id;
+                    let img_format = img.format.clone();
+                    let preview_url = preview_image_url_for_load.clone();
+                    
+                    web_sys::console::log_1(
+                        &format!("Loading preview for image blob: {}", blob_id.0).into(),
+                    );
+                    
+                    spawn_local(async move {
+                        match tauri_api::get_blob(blob_id.0.to_string()).await {
+                            Ok(data) => {
+                                web_sys::console::log_1(
+                                    &format!("Loaded {} bytes for preview", data.len()).into(),
+                                );
+                                
+                                // Convert blob data to base64 using the base64 crate
+                                let base64 = general_purpose::STANDARD.encode(&data);
+
+                                let format = img_format.as_deref().unwrap_or("jpeg");
+                                let mime_type = match format {
+                                    "png" => "image/png",
+                                    "jpeg" | "jpg" => "image/jpeg",
+                                    "gif" => "image/gif",
+                                    "webp" => "image/webp",
+                                    _ => "image/jpeg",
+                                };
+                                let data_url = format!("data:{};base64,{}", mime_type, base64);
+                                web_sys::console::log_1(
+                                    &format!("Created data URL with {} chars", data_url.len()).into(),
+                                );
+                                preview_url.set(Some(data_url));
+                            }
+                            Err(e) => {
+                                web_sys::console::error_1(
+                                    &format!("Failed to load image blob: {}", e).into(),
+                                );
+                            }
+                        }
+                    });
+                }
+            } else {
+                // Clear preview when not hovering
+                preview_image_url_for_load.set(None);
+            }
+        });
+    }
+    
     view! {
         <div
-            class="p-3 border rounded cursor-pointer transition-colors duration-200 w-full max-w-full box-border wrap-break-word hover-bg-panel border-[var(--color-border)] bg-[var(--color-panel-bg)]"
+            node_ref=element_ref
+            class="p-3 border rounded cursor-pointer transition-colors duration-200 w-full max-w-full box-border wrap-break-word hover-bg-panel border-[var(--color-border)] bg-[var(--color-panel-bg)] relative"
         >
+            {move || {
+                if is_image && is_hovered.get() {
+                    if let Some(url) = preview_image_url.get() {
+                        view! {
+                            <div
+                                class="fixed z-50 pointer-events-none"
+                                style=move || {
+                                    // Calculate position based on element position
+                                    if let Some(element) = element_ref.get() {
+                                        let rect = element.get_bounding_client_rect();
+                                        
+                                        // Get viewport dimensions
+                                        let viewport_height = web_sys::window()
+                                            .and_then(|w| w.inner_height().ok())
+                                            .and_then(|h| h.as_f64())
+                                            .unwrap_or(800.0);
+                                        
+                                        // Margin constant - same for all sides
+                                        let margin = 16.0;
+                                        
+                                        // Entry center position
+                                        let entry_center_y = rect.top() + (rect.height() / 2.0);
+                                        
+                                        // Calculate preview dimensions based on image aspect ratio
+                                        let max_preview_size = 400.0;
+                                        let (img_width, img_height) = image_dimensions.unwrap_or((max_preview_size, max_preview_size));
+                                        let aspect_ratio = img_width / img_height;
+                                        
+                                        // Calculate preview dimensions maintaining aspect ratio
+                                        let (preview_width, preview_height) = if aspect_ratio > 1.0 {
+                                            // Landscape: width is limiting factor
+                                            (max_preview_size, max_preview_size / aspect_ratio)
+                                        } else {
+                                            // Portrait or square: height is limiting factor
+                                            (max_preview_size * aspect_ratio, max_preview_size)
+                                        };
+                                        
+                                        // Check if preview is too tall for viewport and scale down if needed
+                                        let available_height = viewport_height - (margin * 2.0); // margin top and bottom
+                                        let (final_width, final_height) = if preview_height > available_height {
+                                            // Scale down to fit height
+                                            let scale = available_height / preview_height;
+                                            (preview_width * scale, available_height)
+                                        } else {
+                                            (preview_width, preview_height)
+                                        };
+                                        
+                                        // Calculate horizontal position (center preview with entry, positioned to the left)
+                                        let left = rect.left() - final_width - margin;
+                                        
+                                        // Calculate vertical position (center preview with entry)
+                                        let mut top = entry_center_y - (final_height / 2.0);
+                                        
+                                        // Define valid range with margins (same margin as horizontal)
+                                        let min_top = margin;
+                                        let max_top = viewport_height - final_height - margin;
+                                        
+                                        // Adjust if preview goes off screen - place at edge
+                                        if top < min_top {
+                                            // Would go off top - place at top edge with margin
+                                            top = min_top;
+                                        } else if top > max_top {
+                                            // Would go off bottom - place at bottom edge with margin
+                                            top = max_top;
+                                        }
+                                        
+                                        // Final clamp to ensure it's always in bounds
+                                        top = top.max(min_top).min(max_top);
+                                        
+                                        format!(
+                                            "left: {}px; top: {}px; width: {}px; height: {}px;",
+                                            left, top, final_width, final_height
+                                        )
+                                    } else {
+                                        "display: none;".to_string()
+                                    }
+                                }
+                            >
+                                <img
+                                    class="w-full h-full object-contain rounded border border-[var(--color-border)] shadow-lg bg-[var(--color-panel-bg)]"
+                                    src=url
+                                    alt="Preview"
+                                />
+                            </div>
+                        }.into_any()
+                    } else {
+                        view! { <></> }.into_any()
+                    }
+                } else {
+                    view! { <></> }.into_any()
+                }
+            }}
             <RawPreview content=content />
             <div class="text-xs mt-1 text-[var(--color-text-secondary)]">{source}</div>
             <div class="text-xs mt-1 text-[var(--color-text-secondary)]">{created}</div>
@@ -513,34 +681,19 @@ fn RawPreview(content: RawContent) -> impl IntoView {
                         spawn_local(async move {
                             match tauri_api::get_blob(thumb_blob_id.0.to_string()).await {
                                 Ok(data) => {
-                                    // Convert blob data to base64 data URL using web APIs
-                                    // Convert Vec<u8> to binary string for btoa
-                                    let binary_string: String = data.iter().map(|&b| b as char).collect();
-                                    let window = web_sys::window().unwrap();
-                                    let base64 = match js_sys::Reflect::get(&window, &wasm_bindgen::JsValue::from_str("btoa")) {
-                                        Ok(btoa_fn) => {
-                                            match js_sys::Function::from(btoa_fn)
-                                                .call1(&wasm_bindgen::JsValue::NULL, &wasm_bindgen::JsValue::from_str(&binary_string))
-                                            {
-                                                Ok(result) => result.as_string().unwrap_or_default(),
-                                                Err(_) => String::new(),
-                                            }
-                                        }
-                                        Err(_) => String::new(),
-                                    };
+                                    // Convert blob data to base64 using the base64 crate
+                                    let base64 = general_purpose::STANDARD.encode(&data);
 
-                                    if !base64.is_empty() {
-                                        let format = img.format.as_deref().unwrap_or("jpeg");
-                                        let mime_type = match format {
-                                            "png" => "image/png",
-                                            "jpeg" | "jpg" => "image/jpeg",
-                                            "gif" => "image/gif",
-                                            "webp" => "image/webp",
-                                            _ => "image/jpeg",
-                                        };
-                                        let data_url = format!("data:{};base64,{}", mime_type, base64);
-                                        thumbnail_url.set(Some(data_url));
-                                    }
+                                    let format = img.format.as_deref().unwrap_or("jpeg");
+                                    let mime_type = match format {
+                                        "png" => "image/png",
+                                        "jpeg" | "jpg" => "image/jpeg",
+                                        "gif" => "image/gif",
+                                        "webp" => "image/webp",
+                                        _ => "image/jpeg",
+                                    };
+                                    let data_url = format!("data:{};base64,{}", mime_type, base64);
+                                    thumbnail_url.set(Some(data_url));
                                 }
                                 Err(_) => {
                                     // Fallback to emoji on error
