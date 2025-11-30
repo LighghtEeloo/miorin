@@ -1,6 +1,7 @@
 pub mod meta;
 pub mod raw;
 pub mod cube;
+pub mod prism;
 
 use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
