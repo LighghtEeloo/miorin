@@ -46,5 +46,21 @@ until conflict is solved, either by weakening the Cake and Prisms (e.g. from Ord
 or by shallow / deep duplicating the Cube.
 We may want reference counting of some sort to keep track of lifetimes of Cubes.
 
-## PreOrder
+## Point
 
+Text, Image, and all primitives.
+
+Reference.
+
+Null.
+
+## Order
+
+All notebooks are just orders.
+LLM-assisted expansion and suggestion.
+
+## Preorder
+
+See notes.
+
+Prism over prism. An Order (a chain) could be extracted from a Preorder (a DAG).
